@@ -11,155 +11,277 @@ protected:
 
     bool m_hasMusic = false;
 
+    CCLabelBMFont* label(
+        const char* text,
+        const char* font,
+        float scale,
+        float x,
+        float y
+    ) {
+        auto l = CCLabelBMFont::create(text, font);
+        l->setScale(scale);
+        l->setPosition({x, y});
+        this->addChild(l);
+        return l;
+    }
+
+    CCLayerColor* card(
+        float x,
+        float y,
+        float w,
+        float h
+    ) {
+        auto c = CCLayerColor::create(
+            ccc4(10, 24, 42, 235),
+            {w, h}
+        );
+
+        c->setPosition({x, y});
+        this->addChild(c);
+
+        return c;
+    }
+
+    CCMenuItemSpriteExtra* button(
+        const char* text,
+        SEL_MenuHandler callback,
+        float x,
+        float y,
+        float width = 135.f
+    ) {
+        auto sprite = ButtonSprite::create(
+            text,
+            width,
+            true,
+            "goldFont.fnt",
+            "GJ_button_01.png",
+            30.f,
+            1.f
+        );
+
+        auto item = CCMenuItemSpriteExtra::create(
+            sprite,
+            this,
+            callback
+        );
+
+        item->setPosition({x, y});
+
+        return item;
+    }
+
     bool init() {
+
         if (!FLAlertLayer::init(
             nullptr,
             "AI LEVEL GENERATOR",
-            "Create levels from music",
+            " ",
             "CERRAR",
             nullptr,
-            420.f,
+            520.f,
             false,
-            260.f,
+            330.f,
             1.f
         )) {
             return false;
         }
 
-        auto winSize = CCDirector::sharedDirector()->getWinSize();
+        auto size = CCDirector::sharedDirector()->getWinSize();
+        auto cx = size.width / 2.f;
 
-        auto title = CCLabelBMFont::create(
+
+        // =========================
+        // HEADER
+        // =========================
+
+        label(
             "AI LEVEL GENERATOR",
-            "bigFont.fnt"
+            "bigFont.fnt",
+            0.58f,
+            cx,
+            size.height - 63.f
         );
-        title->setPosition({
-            winSize.width / 2.f,
-            winSize.height - 55.f
-        });
-        title->setScale(0.55f);
-        this->addChild(title);
 
-        auto subtitle = CCLabelBMFont::create(
-            "Create levels from music",
-            "goldFont.fnt"
+        label(
+            "MUSIC  ->  ANALYSIS  ->  GENERATION",
+            "goldFont.fnt",
+            0.34f,
+            cx,
+            size.height - 91.f
         );
-        subtitle->setPosition({
-            winSize.width / 2.f,
-            winSize.height - 82.f
-        });
-        subtitle->setScale(0.45f);
-        this->addChild(subtitle);
 
-        auto musicTitle = CCLabelBMFont::create(
+
+        // =========================
+        // MUSIC CARD
+        // =========================
+
+        card(
+            cx - 225.f,
+            size.height - 220.f,
+            450.f,
+            92.f
+        );
+
+        label(
             "MUSICA",
-            "bigFont.fnt"
-        );
-        musicTitle->setPosition({
-            winSize.width / 2.f,
-            winSize.height - 120.f
-        });
-        musicTitle->setScale(0.42f);
-        this->addChild(musicTitle);
-
-        m_songLabel = CCLabelBMFont::create(
-            "No hay musica seleccionada",
-            "chatFont.fnt"
-        );
-        m_songLabel->setPosition({
-            winSize.width / 2.f,
-            winSize.height - 145.f
-        });
-        m_songLabel->setScale(0.55f);
-        this->addChild(m_songLabel);
-
-        auto addBtn = CCMenuItemSpriteExtra::create(
-            ButtonSprite::create(
-                "AGREGAR MUSICA",
-                120,
-                true,
-                "goldFont.fnt",
-                "GJ_button_01.png",
-                30.f,
-                1.f
-            ),
-            this,
-            menu_selector(AILGMainLayer::onAddMusic)
+            "goldFont.fnt",
+            0.38f,
+            cx - 175.f,
+            size.height - 153.f
         );
 
-        addBtn->setPosition({
-            winSize.width / 2.f,
-            winSize.height - 180.f
-        });
-
-        auto analyzeBtn = CCMenuItemSpriteExtra::create(
-            ButtonSprite::create(
-                "ANALIZAR MUSICA",
-                120,
-                true,
-                "goldFont.fnt",
-                "GJ_button_01.png",
-                30.f,
-                1.f
-            ),
-            this,
-            menu_selector(AILGMainLayer::onAnalyze)
+        m_songLabel = label(
+            "Ninguna musica seleccionada",
+            "chatFont.fnt",
+            0.52f,
+            cx - 75.f,
+            size.height - 187.f
         );
 
-        analyzeBtn->setPosition({
-            winSize.width / 2.f,
-            45.f
-        });
+        m_statusLabel = label(
+            "LISTO",
+            "chatFont.fnt",
+            0.42f,
+            cx - 170.f,
+            size.height - 207.f
+        );
+
+
+        // =========================
+        // BOTONES
+        // =========================
 
         auto menu = CCMenu::create();
         menu->setPosition({0, 0});
-        menu->addChild(addBtn);
-        menu->addChild(analyzeBtn);
-        this->addChild(menu);
 
-        m_statusLabel = CCLabelBMFont::create(
-            "Estado: listo",
-            "chatFont.fnt"
-        );
-        m_statusLabel->setPosition({
-            winSize.width / 2.f,
-            78.f
-        });
-        m_statusLabel->setScale(0.5f);
-        this->addChild(m_statusLabel);
 
-        m_analysisLabel = CCLabelBMFont::create(
-            "Configuracion: Damon | IA decide | Sincronizacion extrema",
-            "chatFont.fnt"
+        auto add = button(
+            "AGREGAR MUSICA",
+            menu_selector(AILGMainLayer::onAddMusic),
+            cx + 125.f,
+            size.height - 187.f,
+            125.f
         );
-        m_analysisLabel->setPosition({
-            winSize.width / 2.f,
+
+
+        auto analyze = button(
+            "ANALIZAR",
+            menu_selector(AILGMainLayer::onAnalyze),
+            cx - 145.f,
+            78.f,
+            125.f
+        );
+
+
+        auto generate = button(
+            "GENERAR NIVEL",
+            menu_selector(AILGMainLayer::onGenerate),
+            cx + 145.f,
+            78.f,
+            125.f
+        );
+
+        generate->setEnabled(false);
+        generate->setOpacity(120);
+
+
+        menu->addChild(add);
+        menu->addChild(analyze);
+        menu->addChild(generate);
+
+        this->addChild(menu, 5);
+
+
+        // =========================
+        // ANALISIS IA
+        // =========================
+
+        card(
+            cx - 225.f,
+            120.f,
+            450.f,
             105.f
-        });
-        m_analysisLabel->setScale(0.42f);
-        this->addChild(m_analysisLabel);
+        );
+
+        label(
+            "ANALISIS IA",
+            "goldFont.fnt",
+            0.38f,
+            cx,
+            193.f
+        );
+
+
+        m_analysisLabel = label(
+            "BPM      BEATS      ENERGIA      SECCIONES",
+            "chatFont.fnt",
+            0.40f,
+            cx,
+            163.f
+        );
+
+
+        label(
+            "La IA decidira la sincronizacion del gameplay.",
+            "chatFont.fnt",
+            0.36f,
+            cx,
+            138.f
+        );
+
+
+        // =========================
+        // FOOTER
+        // =========================
+
+        label(
+            "AI ENGINE  •  EXPERIMENTAL",
+            "chatFont.fnt",
+            0.30f,
+            cx,
+            51.f
+        );
+
 
         return true;
     }
 
+
+    // =========================
+    // AGREGAR MUSICA
+    // =========================
+
     void onAddMusic(CCObject*) {
+
         m_hasMusic = true;
 
-        m_songLabel->setString("Musica seleccionada");
+        m_songLabel->setString(
+            "Musica de prueba seleccionada"
+        );
 
         m_statusLabel->setString(
-            "Estado: musica lista"
+            "MUSICA LISTA"
         );
+
 
         FLAlertLayer::create(
             "MUSICA",
-            "La musica ha sido seleccionada.\n"
-            "El selector real de Android se conectara en la siguiente fase.",
+            "Musica de prueba seleccionada.\n"
+            "El selector real de archivos de Android "
+            "sera conectado en la siguiente fase.",
             "OK"
         )->show();
     }
 
+
+    // =========================
+    // ANALIZAR
+    // =========================
+
     void onAnalyze(CCObject*) {
+
         if (!m_hasMusic) {
+
             FLAlertLayer::create(
                 "AI LEVEL GENERATOR",
                 "Primero agrega una musica.",
@@ -169,69 +291,120 @@ protected:
             return;
         }
 
+
         m_statusLabel->setString(
-            "Estado: analizando..."
+            "ANALIZANDO"
         );
+
 
         m_analysisLabel->setString(
-            "BPM | beats | energia | secciones | drops | instrumentos"
+            "BPM | BEATS | ENERGIA | DROPS | SECCIONES"
         );
 
+
         FLAlertLayer::create(
-            "ANALISIS",
-            "Modulo de analisis preparado.\n"
-            "En la siguiente fase conectaremos el analizador "
-            "real de audio y el mapa musical.",
+            "ANALISIS IA",
+            "Interfaz de analisis lista.\n"
+            "La proxima fase conectara el analizador "
+            "real de audio.",
             "CONTINUAR"
         )->show();
     }
 
+
+    // =========================
+    // GENERAR NIVEL
+    // =========================
+
+    void onGenerate(CCObject*) {
+
+        FLAlertLayer::create(
+            "GENERADOR",
+            "La generacion del nivel se habilitara "
+            "despues de conectar\n"
+            "el analisis real de la musica.",
+            "OK"
+        )->show();
+    }
+
+
 public:
+
     static AILGMainLayer* create() {
+
         auto ret = new AILGMainLayer();
 
         if (ret && ret->init()) {
+
             ret->autorelease();
+
             return ret;
         }
 
         CC_SAFE_DELETE(ret);
+
         return nullptr;
     }
 };
 
+
+// =========================
+// BOTON EN MENU PRINCIPAL
+// =========================
+
 class $modify(AILGMenuLayer, MenuLayer) {
+
     struct Fields {};
 
+
     bool init() {
+
         if (!MenuLayer::init())
             return false;
 
-        auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        auto btn = CCMenuItemSpriteExtra::create(
+        auto size =
+            CCDirector::sharedDirector()->getWinSize();
+
+
+        auto sprite =
             CCSprite::createWithSpriteFrameName(
                 "GJ_infoIcon_001.png"
-            ),
-            this,
-            menu_selector(AILGMenuLayer::openGenerator)
-        );
+            );
+
+
+        auto btn =
+            CCMenuItemSpriteExtra::create(
+                sprite,
+                this,
+                menu_selector(
+                    AILGMenuLayer::openGenerator
+                )
+            );
+
 
         btn->setScale(0.8f);
 
+
         auto menu = CCMenu::create();
+
         menu->setPosition({
-            winSize.width - 35.f,
+            size.width - 35.f,
             35.f
         });
 
+
         menu->addChild(btn);
+
         this->addChild(menu, 10);
+
 
         return true;
     }
 
+
     void openGenerator(CCObject*) {
+
         AILGMainLayer::create()->show();
     }
 };
