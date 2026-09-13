@@ -1,0 +1,11 @@
+{
+  "geode": "v5.10.1",
+  "gd": {
+    "android": "2.2081"
+  },
+  "id": "damon.ai-level-generator",
+  "name": "AI Level Generator",
+  "version": "v0.1.1",
+  "developer": "Damon",
+  "description": "Generador experimental de niveles de Geometry Dash basado en el análisis de música."
+}
