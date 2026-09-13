@@ -1,6 +1,5 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/MenuLayer.hpp>
-#include <Geode/ui/GeodeUI.hpp>
 
 using namespace geode::prelude;
 
@@ -10,13 +9,17 @@ protected:
     CCLabelBMFont* m_statusLabel = nullptr;
     CCLabelBMFont* m_analysisLabel = nullptr;
 
+    bool m_hasMusic = false;
+
     bool init() {
         if (!FLAlertLayer::init(
             nullptr,
             "AI LEVEL GENERATOR",
+            "Create levels from music",
             "CERRAR",
             nullptr,
             420.f,
+            false,
             260.f,
             1.f
         )) {
@@ -125,7 +128,7 @@ protected:
         this->addChild(m_statusLabel);
 
         m_analysisLabel = CCLabelBMFont::create(
-            "Configuracion: Demon | IA decide | Sincronizacion extrema",
+            "Configuracion: Damon | IA decide | Sincronizacion extrema",
             "chatFont.fnt"
         );
         m_analysisLabel->setPosition({
@@ -139,27 +142,30 @@ protected:
     }
 
     void onAddMusic(CCObject*) {
+        m_hasMusic = true;
+
+        m_songLabel->setString("Musica seleccionada");
+
         m_statusLabel->setString(
-            "Estado: selector de musica - proxima fase"
+            "Estado: musica lista"
         );
 
         FLAlertLayer::create(
             "MUSICA",
-            "La primera version usara el selector de archivos de Android para elegir MP3/WAV/OGG.",
+            "La musica ha sido seleccionada.\n"
+            "El selector real de Android se conectara en la siguiente fase.",
             "OK"
         )->show();
     }
 
     void onAnalyze(CCObject*) {
-        if (
-            m_songLabel->getString() ==
-            "No hay musica seleccionada"
-        ) {
+        if (!m_hasMusic) {
             FLAlertLayer::create(
                 "AI LEVEL GENERATOR",
                 "Primero agrega una musica.",
                 "OK"
             )->show();
+
             return;
         }
 
@@ -173,7 +179,9 @@ protected:
 
         FLAlertLayer::create(
             "ANALISIS",
-            "Modulo de analisis preparado. En la siguiente fase conectaremos el analizador real de audio y el mapa musical.",
+            "Modulo de analisis preparado.\n"
+            "En la siguiente fase conectaremos el analizador "
+            "real de audio y el mapa musical.",
             "CONTINUAR"
         )->show();
     }
@@ -196,9 +204,8 @@ class $modify(AILGMenuLayer, MenuLayer) {
     struct Fields {};
 
     bool init() {
-        if (!MenuLayer::init()) {
+        if (!MenuLayer::init())
             return false;
-        }
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
@@ -207,15 +214,12 @@ class $modify(AILGMenuLayer, MenuLayer) {
                 "GJ_infoIcon_001.png"
             ),
             this,
-            menu_selector(
-                AILGMenuLayer::openGenerator
-            )
+            menu_selector(AILGMenuLayer::openGenerator)
         );
 
         btn->setScale(0.8f);
 
         auto menu = CCMenu::create();
-
         menu->setPosition({
             winSize.width - 35.f,
             35.f
