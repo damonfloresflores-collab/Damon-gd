@@ -3,346 +3,119 @@
 #include <Geode/utils/async.hpp>
 #include <Geode/utils/file.hpp>
 
-#include <mpg123.h>
-
 #include <filesystem>
 #include <algorithm>
 #include <cctype>
 #include <string>
-#include <vector>
-#include <cmath>
 
 using namespace geode::prelude;
 
 
 // ============================================================
-// RESULTADO DEL ANALISIS BASICO
-// ============================================================
-
-struct AudioInfo {
-    long sampleRate = 0;
-    int channels = 0;
-    int encoding = 0;
-
-    long long totalSamples = 0;
-
-    double duration = 0.0;
-
-    double rms = 0.0;
-    double peak = 0.0;
-};
-
-
-// ============================================================
-// DECODIFICADOR MPG123
-// ============================================================
-
-static bool decodeMP3(
-    const std::filesystem::path& path,
-    AudioInfo& info
-) {
-    int error = MPG123_OK;
-
-    mpg123_handle* handle = mpg123_new(nullptr, &error);
-
-    if (!handle) {
-        log::error("MPG123: no se pudo crear el decoder");
-        return false;
-    }
-
-    // Queremos PCM signed 16-bit.
-    if (mpg123_format_none(handle) != MPG123_OK) {
-        log::error("MPG123: error configurando formato");
-        mpg123_delete(handle);
-        return false;
-    }
-
-    int openResult = mpg123_open(
-        handle,
-        path.string().c_str()
-    );
-
-    if (openResult != MPG123_OK) {
-        log::error(
-            "MPG123: no se pudo abrir MP3: {}",
-            mpg123_strerror(handle)
-        );
-
-        mpg123_delete(handle);
-        return false;
-    }
-
-    long rate = 0;
-    int channels = 0;
-    int encoding = 0;
-
-    if (mpg123_getformat(
-        handle,
-        &rate,
-        &channels,
-        &encoding
-    ) != MPG123_OK) {
-
-        log::error("MPG123: no se pudo obtener el formato");
-
-        mpg123_close(handle);
-        mpg123_delete(handle);
-
-        return false;
-    }
-
-    info.sampleRate = rate;
-    info.channels = channels;
-    info.encoding = encoding;
-
-    // --------------------------------------------------------
-    // Decodificar PCM
-    // --------------------------------------------------------
-
-    const size_t BUFFER_SIZE = 16384;
-
-    unsigned char buffer[BUFFER_SIZE];
-
-    std::vector<int16_t> samples;
-
-    samples.reserve(
-        static_cast<size_t>(rate) *
-        static_cast<size_t>(channels) *
-        60
-    );
-
-    size_t bytesRead = 0;
-
-    while (true) {
-
-        int result = mpg123_read(
-            handle,
-            buffer,
-            BUFFER_SIZE,
-            &bytesRead
-        );
-
-        if (bytesRead > 0) {
-
-            size_t sampleCount =
-                bytesRead / sizeof(int16_t);
-
-            const int16_t* pcm =
-                reinterpret_cast<const int16_t*>(buffer);
-
-            samples.insert(
-                samples.end(),
-                pcm,
-                pcm + sampleCount
-            );
-        }
-
-        if (result == MPG123_DONE) {
-            break;
-        }
-
-        if (result != MPG123_OK) {
-
-            if (result == MPG123_NEW_FORMAT) {
-                continue;
-            }
-
-            log::error(
-                "MPG123: error durante decodificacion: {}",
-                mpg123_strerror(handle)
-            );
-
-            mpg123_close(handle);
-            mpg123_delete(handle);
-
-            return false;
-        }
-    }
-
-    mpg123_close(handle);
-    mpg123_delete(handle);
-
-    if (samples.empty()) {
-        log::error("MPG123: no se obtuvieron muestras PCM");
-        return false;
-    }
-
-    // --------------------------------------------------------
-    // Estadisticas basicas
-    // --------------------------------------------------------
-
-    info.totalSamples =
-        static_cast<long long>(
-            samples.size()
-        );
-
-    if (rate > 0 && channels > 0) {
-
-        info.duration =
-            static_cast<double>(
-                samples.size()
-            )
-            /
-            static_cast<double>(
-                rate * channels
-            );
-    }
-
-    double sumSquares = 0.0;
-    double peak = 0.0;
-
-    for (int16_t sample : samples) {
-
-        double normalized =
-            static_cast<double>(sample)
-            /
-            32768.0;
-
-        double absolute =
-            std::abs(normalized);
-
-        sumSquares +=
-            normalized * normalized;
-
-        if (absolute > peak)
-            peak = absolute;
-    }
-
-    info.rms =
-        std::sqrt(
-            sumSquares /
-            static_cast<double>(samples.size())
-        );
-
-    info.peak = peak;
-
-    log::info(
-        "======================================"
-    );
-
-    log::info(
-        "AI LEVEL GENERATOR - MPG123"
-    );
-
-    log::info(
-        "Sample Rate: {} Hz",
-        info.sampleRate
-    );
-
-    log::info(
-        "Channels: {}",
-        info.channels
-    );
-
-    log::info(
-        "Duration: {:.2f} sec",
-        info.duration
-    );
-
-    log::info(
-        "Samples: {}",
-        info.totalSamples
-    );
-
-    log::info(
-        "RMS: {:.5f}",
-        info.rms
-    );
-
-    log::info(
-        "Peak: {:.5f}",
-        info.peak
-    );
-
-    log::info(
-        "======================================"
-    );
-
-    return true;
-}
-
-
-// ============================================================
-// PANEL
+// AI LEVEL GENERATOR
 // ============================================================
 
 class AIGeneratorPanel : public CCLayer {
-
 protected:
 
     CCLabelBMFont* m_musicName = nullptr;
     CCLabelBMFont* m_analysisStatus = nullptr;
     CCLabelBMFont* m_generationStatus = nullptr;
 
+    // Ruta del MP3 seleccionado
     std::filesystem::path m_musicPath;
 
     bool m_hasMusic = false;
     bool m_hasAnalysis = false;
-    bool m_isAnalyzing = false;
 
 
-    // --------------------------------------------------------
-    // LABEL
-    // --------------------------------------------------------
+    // ========================================================
+    // CREAR LABEL
+    // ========================================================
 
     CCLabelBMFont* makeLabel(
         const char* text,
-        float size
+        const char* font,
+        float scale,
+        float x,
+        float y
     ) {
 
-        auto label =
-            CCLabelBMFont::create(
-                text,
-                "bigFont.fnt"
-            );
+        auto label = CCLabelBMFont::create(
+            text,
+            font
+        );
 
         if (!label)
             return nullptr;
 
-        label->setScale(size / 30.f);
+        label->setScale(scale);
+
+        label->setPosition({
+            x,
+            y
+        });
+
+        this->addChild(
+            label,
+            20
+        );
 
         return label;
     }
 
 
-    // --------------------------------------------------------
-    // BUTTON
-    // --------------------------------------------------------
+    // ========================================================
+    // CREAR BOTON
+    // ========================================================
 
     CCMenuItemSpriteExtra* makeButton(
         const char* text,
-        const char* callback
+        SEL_MenuHandler callback,
+        float x,
+        float y,
+        float width
     ) {
 
-        auto sprite =
-            ButtonSprite::create(
-                text,
-                100,
-                true,
-                "goldFont.fnt",
-                "GJ_button_01.png",
-                30.f,
-                1.f
-            );
+        auto sprite = ButtonSprite::create(
+            text,
+            width,
+            true,
+            "goldFont.fnt",
+            "GJ_button_01.png",
+            28.f,
+            1.f
+        );
+
+        if (!sprite)
+            return nullptr;
 
         auto button =
             CCMenuItemSpriteExtra::create(
                 sprite,
                 this,
-                menu_selector(
-                    AIGeneratorPanel::onAddMusic
-                )
+                callback
             );
+
+        if (!button)
+            return nullptr;
+
+        button->setPosition({
+            x,
+            y
+        });
 
         return button;
     }
 
 
-    // --------------------------------------------------------
-    // CARD
-    // --------------------------------------------------------
+    // ========================================================
+    // CREAR TARJETA
+    // ========================================================
 
     CCLayerColor* makeCard(
+        float x,
+        float y,
         float width,
         float height
     ) {
@@ -350,185 +123,238 @@ protected:
         auto card =
             CCLayerColor::create(
                 ccc4(
-                    8,
-                    25,
-                    48,
-                    255
+                    5,
+                    32,
+                    58,
+                    245
                 )
             );
 
-        card->setContentSize(
-            CCSize(width, height)
+        if (!card)
+            return nullptr;
+
+        card->setContentSize({
+            width,
+            height
+        });
+
+        card->setPosition({
+            x,
+            y
+        });
+
+        this->addChild(
+            card,
+            5
         );
 
         return card;
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // INIT
-    // --------------------------------------------------------
+    // ========================================================
 
     bool init() {
 
         if (!CCLayer::init())
             return false;
 
-        auto screen =
-            CCDirector::sharedDirector()
-                ->getWinSize();
 
-        this->setContentSize(screen);
+        auto screen =
+            CCDirector::sharedDirector()->getWinSize();
+
+
+        this->setContentSize(
+            screen
+        );
+
 
         // ====================================================
-        // FONDO
+        // FONDO OSCURO
         // ====================================================
 
         auto overlay =
             CCLayerColor::create(
                 ccc4(
                     0,
-                    5,
-                    15,
-                    190
+                    0,
+                    0,
+                    150
                 )
             );
 
-        overlay->setContentSize(screen);
+        if (overlay) {
 
-        this->addChild(
-            overlay,
-            -10
-        );
+            overlay->setContentSize(
+                screen
+            );
+
+            overlay->setPosition({
+                0.f,
+                0.f
+            });
+
+            this->addChild(
+                overlay,
+                -10
+            );
+        }
 
 
         // ====================================================
-        // PANEL
+        // TAMAÑO DEL PANEL
         // ====================================================
 
         const float panelW = 540.f;
         const float panelH = 320.f;
 
+
         const float panelX =
             (screen.width - panelW) / 2.f;
+
 
         const float panelY =
             (screen.height - panelH) / 2.f;
 
 
-        // Borde cyan
+        // ====================================================
+        // BORDE CELESTE
+        // ====================================================
 
         auto border =
             CCLayerColor::create(
                 ccc4(
                     0,
-                    210,
+                    190,
                     255,
                     255
                 )
             );
 
-        border->setContentSize(
-            CCSize(
-                panelW + 4.f,
-                panelH + 4.f
-            )
-        );
+        if (border) {
 
-        border->setPosition(
-            panelX - 2.f,
-            panelY - 2.f
-        );
+            border->setContentSize({
+                panelW,
+                panelH
+            });
 
-        this->addChild(
-            border
-        );
+            border->setPosition({
+                panelX,
+                panelY
+            });
+
+            this->addChild(
+                border,
+                1
+            );
+        }
 
 
-        // Panel principal
+        // ====================================================
+        // PANEL PRINCIPAL
+        // ====================================================
 
         auto panel =
             CCLayerColor::create(
                 ccc4(
-                    7,
-                    18,
-                    38,
+                    5,
+                    22,
+                    42,
                     255
                 )
             );
 
-        panel->setContentSize(
-            CCSize(
-                panelW,
-                panelH
-            )
-        );
+        if (panel) {
 
-        panel->setPosition(
-            panelX,
-            panelY
-        );
+            panel->setContentSize({
+                panelW - 8.f,
+                panelH - 8.f
+            });
 
-        this->addChild(
-            panel,
-            1
-        );
+            panel->setPosition({
+                panelX + 4.f,
+                panelY + 4.f
+            });
+
+            this->addChild(
+                panel,
+                2
+            );
+        }
 
 
         // ====================================================
-        // HEADER
+        // CABECERA
         // ====================================================
 
         auto header =
             CCLayerColor::create(
                 ccc4(
                     8,
-                    35,
-                    62,
+                    45,
+                    75,
                     255
                 )
             );
 
-        header->setContentSize(
-            CCSize(
-                panelW,
-                58.f
-            )
-        );
+        if (header) {
 
-        header->setPosition(
-            panelX,
-            panelY + panelH - 58.f
-        );
+            header->setContentSize({
+                panelW - 8.f,
+                70.f
+            });
 
-        this->addChild(
-            header,
-            2
-        );
+            header->setPosition({
+                panelX + 4.f,
+                panelY + panelH - 74.f
+            });
+
+            this->addChild(
+                header,
+                3
+            );
+        }
+
+
+        // ====================================================
+        // ICONO INFO
+        // ====================================================
+
+        auto icon =
+            CCSprite::createWithSpriteFrameName(
+                "GJ_infoIcon_001.png"
+            );
+
+        if (icon) {
+
+            icon->setScale(
+                0.65f
+            );
+
+            icon->setPosition({
+                panelX + 42.f,
+                panelY + panelH - 37.f
+            });
+
+            this->addChild(
+                icon,
+                25
+            );
+        }
 
 
         // ====================================================
         // TITULO
         // ====================================================
 
-        auto title =
-            CCLabelBMFont::create(
-                "AI LEVEL GENERATOR",
-                "bigFont.fnt"
-            );
-
-        title->setScale(
-            0.75f
-        );
-
-        title->setPosition(
+        makeLabel(
+            "AI LEVEL GENERATOR",
+            "bigFont.fnt",
+            0.52f,
             panelX + panelW / 2.f,
-            panelY + panelH - 25.f
-        );
-
-        this->addChild(
-            title,
-            3
+            panelY + panelH - 31.f
         );
 
 
@@ -536,24 +362,12 @@ protected:
         // SUBTITULO
         // ====================================================
 
-        auto subtitle =
-            CCLabelBMFont::create(
-                "CREA NIVELES CON INTELIGENCIA ARTIFICIAL",
-                "chatFont.fnt"
-            );
-
-        subtitle->setScale(
-            0.62f
-        );
-
-        subtitle->setPosition(
+        makeLabel(
+            "CREA NIVELES CON INTELIGENCIA ARTIFICIAL",
+            "goldFont.fnt",
+            0.24f,
             panelX + panelW / 2.f,
-            panelY + panelH - 47.f
-        );
-
-        this->addChild(
-            subtitle,
-            3
+            panelY + panelH - 56.f
         );
 
 
@@ -561,348 +375,267 @@ protected:
         // TARJETA DE INFORMACION
         // ====================================================
 
-        auto card =
-            makeCard(
-                500.f,
-                105.f
-            );
-
-        card->setPosition(
+        makeCard(
             panelX + 20.f,
-            panelY + 135.f
-        );
-
-        this->addChild(
-            card,
-            2
-        );
-
-
-        // MUSICA
-
-        auto musicLabel =
-            CCLabelBMFont::create(
-                "MUSICA",
-                "goldFont.fnt"
-            );
-
-        musicLabel->setScale(
-            0.60f
-        );
-
-        musicLabel->setAnchorPoint(
-            ccp(
-                0.f,
-                0.5f
-            )
-        );
-
-        musicLabel->setPosition(
-            panelX + 35.f,
-            panelY + 212.f
-        );
-
-        this->addChild(
-            musicLabel,
-            3
-        );
-
-
-        m_musicName =
-            CCLabelBMFont::create(
-                "Ninguna musica seleccionada",
-                "chatFont.fnt"
-            );
-
-        m_musicName->setScale(
-            0.65f
-        );
-
-        m_musicName->setAnchorPoint(
-            ccp(
-                0.f,
-                0.5f
-            )
-        );
-
-        m_musicName->setPosition(
-            panelX + 35.f,
-            panelY + 190.f
-        );
-
-        this->addChild(
-            m_musicName,
-            3
-        );
-
-
-        // ANALISIS
-
-        auto analysisLabel =
-            CCLabelBMFont::create(
-                "ANALISIS",
-                "goldFont.fnt"
-            );
-
-        analysisLabel->setScale(
-            0.60f
-        );
-
-        analysisLabel->setAnchorPoint(
-            ccp(
-                0.f,
-                0.5f
-            )
-        );
-
-        analysisLabel->setPosition(
-            panelX + 270.f,
-            panelY + 212.f
-        );
-
-        this->addChild(
-            analysisLabel,
-            3
-        );
-
-
-        m_analysisStatus =
-            CCLabelBMFont::create(
-                "Sin analisis",
-                "chatFont.fnt"
-            );
-
-        m_analysisStatus->setScale(
-            0.65f
-        );
-
-        m_analysisStatus->setAnchorPoint(
-            ccp(
-                0.f,
-                0.5f
-            )
-        );
-
-        m_analysisStatus->setPosition(
-            panelX + 270.f,
-            panelY + 190.f
-        );
-
-        this->addChild(
-            m_analysisStatus,
-            3
-        );
-
-
-        // GENERACION
-
-        auto generationLabel =
-            CCLabelBMFont::create(
-                "GENERACION",
-                "goldFont.fnt"
-            );
-
-        generationLabel->setScale(
-            0.60f
-        );
-
-        generationLabel->setAnchorPoint(
-            ccp(
-                0.f,
-                0.5f
-            )
-        );
-
-        generationLabel->setPosition(
-            panelX + 270.f,
-            panelY + 162.f
-        );
-
-        this->addChild(
-            generationLabel,
-            3
-        );
-
-
-        m_generationStatus =
-            CCLabelBMFont::create(
-                "Sin generar",
-                "chatFont.fnt"
-            );
-
-        m_generationStatus->setScale(
-            0.65f
-        );
-
-        m_generationStatus->setAnchorPoint(
-            ccp(
-                0.f,
-                0.5f
-            )
-        );
-
-        m_generationStatus->setPosition(
-            panelX + 270.f,
-            panelY + 142.f
-        );
-
-        this->addChild(
-            m_generationStatus,
-            3
+            panelY + 72.f,
+            305.f,
+            145.f
         );
 
 
         // ====================================================
-        // BOTONES
+        // MUSICA
+        // ====================================================
+
+        makeLabel(
+            "MUSICA",
+            "goldFont.fnt",
+            0.34f,
+            panelX + 72.f,
+            panelY + 196.f
+        );
+
+
+        m_musicName =
+            makeLabel(
+                "Ninguna seleccionada",
+                "chatFont.fnt",
+                0.29f,
+                panelX + 175.f,
+                panelY + 196.f
+            );
+
+
+        // ====================================================
+        // LINEA 1
+        // ====================================================
+
+        auto line1 =
+            CCLayerColor::create(
+                ccc4(
+                    30,
+                    100,
+                    145,
+                    255
+                )
+            );
+
+        if (line1) {
+
+            line1->setContentSize({
+                275.f,
+                2.f
+            });
+
+            line1->setPosition({
+                panelX + 35.f,
+                panelY + 169.f
+            });
+
+            this->addChild(
+                line1,
+                10
+            );
+        }
+
+
+        // ====================================================
+        // ANALISIS
+        // ====================================================
+
+        makeLabel(
+            "ANALISIS",
+            "goldFont.fnt",
+            0.34f,
+            panelX + 76.f,
+            panelY + 139.f
+        );
+
+
+        m_analysisStatus =
+            makeLabel(
+                "Sin analisis",
+                "chatFont.fnt",
+                0.29f,
+                panelX + 175.f,
+                panelY + 139.f
+            );
+
+
+        // ====================================================
+        // LINEA 2
+        // ====================================================
+
+        auto line2 =
+            CCLayerColor::create(
+                ccc4(
+                    30,
+                    100,
+                    145,
+                    255
+                )
+            );
+
+        if (line2) {
+
+            line2->setContentSize({
+                275.f,
+                2.f
+            });
+
+            line2->setPosition({
+                panelX + 35.f,
+                panelY + 113.f
+            });
+
+            this->addChild(
+                line2,
+                10
+            );
+        }
+
+
+        // ====================================================
+        // GENERACION
+        // ====================================================
+
+        makeLabel(
+            "GENERACION",
+            "goldFont.fnt",
+            0.34f,
+            panelX + 82.f,
+            panelY + 84.f
+        );
+
+
+        m_generationStatus =
+            makeLabel(
+                "Sin generar",
+                "chatFont.fnt",
+                0.29f,
+                panelX + 180.f,
+                panelY + 84.f
+            );
+
+
+        // ====================================================
+        // MENU
         // ====================================================
 
         auto menu =
             CCMenu::create();
 
-        menu->setPosition(
-            panelX + 20.f,
-            panelY + 82.f
-        );
-
-        this->addChild(
-            menu,
-            5
-        );
+        if (!menu)
+            return false;
 
 
+        menu->setPosition({
+            0.f,
+            0.f
+        });
+
+
+        // ====================================================
         // AGREGAR
-
-        auto addSprite =
-            ButtonSprite::create(
-                "AGREGAR",
-                90,
-                true,
-                "goldFont.fnt",
-                "GJ_button_01.png",
-                30.f,
-                1.f
-            );
+        // ====================================================
 
         auto addButton =
-            CCMenuItemSpriteExtra::create(
-                addSprite,
-                this,
+            makeButton(
+                "AGREGAR",
                 menu_selector(
                     AIGeneratorPanel::onAddMusic
-                )
+                ),
+                panelX + 435.f,
+                panelY + 188.f,
+                100.f
             );
 
-        addButton->setPosition(
-            85.f,
-            0.f
-        );
 
-        menu->addChild(
-            addButton
-        );
-
-
+        // ====================================================
         // ANALIZAR
-
-        auto analyzeSprite =
-            ButtonSprite::create(
-                "ANALIZAR",
-                90,
-                true,
-                "goldFont.fnt",
-                "GJ_button_01.png",
-                30.f,
-                1.f
-            );
+        // ====================================================
 
         auto analyzeButton =
-            CCMenuItemSpriteExtra::create(
-                analyzeSprite,
-                this,
+            makeButton(
+                "ANALIZAR",
                 menu_selector(
                     AIGeneratorPanel::onAnalyze
-                )
+                ),
+                panelX + 435.f,
+                panelY + 130.f,
+                105.f
             );
 
-        analyzeButton->setPosition(
-            220.f,
-            0.f
-        );
 
-        menu->addChild(
-            analyzeButton
-        );
-
-
+        // ====================================================
         // GENERAR
-
-        auto generateSprite =
-            ButtonSprite::create(
-                "GENERAR",
-                90,
-                true,
-                "goldFont.fnt",
-                "GJ_button_04.png",
-                30.f,
-                1.f
-            );
+        // ====================================================
 
         auto generateButton =
-            CCMenuItemSpriteExtra::create(
-                generateSprite,
-                this,
+            makeButton(
+                "GENERAR",
                 menu_selector(
                     AIGeneratorPanel::onGenerate
-                )
+                ),
+                panelX + 435.f,
+                panelY + 72.f,
+                105.f
             );
 
-        generateButton->setPosition(
-            355.f,
-            0.f
-        );
 
-        menu->addChild(
-            generateButton
-        );
+        if (addButton)
+            menu->addChild(
+                addButton
+            );
+
+
+        if (analyzeButton)
+            menu->addChild(
+                analyzeButton
+            );
+
+
+        if (generateButton) {
+
+            generateButton->setEnabled(
+                false
+            );
+
+            generateButton->setOpacity(
+                120
+            );
+
+            menu->addChild(
+                generateButton
+            );
+        }
 
 
         // ====================================================
         // CERRAR
         // ====================================================
 
-        auto closeSprite =
-            CCSprite::createWithSpriteFrameName(
-                "GJ_closeBtn_001.png"
-            );
-
         auto closeButton =
-            CCMenuItemSpriteExtra::create(
-                closeSprite,
-                this,
+            makeButton(
+                "X",
                 menu_selector(
                     AIGeneratorPanel::onClose
-                )
+                ),
+                panelX + panelW - 22.f,
+                panelY + panelH - 18.f,
+                48.f
             );
 
-        closeButton->setPosition(
-            panelX + panelW - 18.f,
-            panelY + panelH - 18.f
-        );
 
-        auto closeMenu =
-            CCMenu::create();
+        if (closeButton)
+            menu->addChild(
+                closeButton
+            );
 
-        closeMenu->setPosition(
-            CCPointZero
-        );
-
-        closeMenu->addChild(
-            closeButton
-        );
 
         this->addChild(
-            closeMenu,
-            10
+            menu,
+            30
         );
 
 
@@ -910,24 +643,12 @@ protected:
         // FOOTER
         // ====================================================
 
-        auto footer =
-            CCLabelBMFont::create(
-                "MP3  â€¢  ANALISIS MUSICAL  â€¢  GENERACION PROCEDURAL",
-                "chatFont.fnt"
-            );
-
-        footer->setScale(
-            0.55f
-        );
-
-        footer->setPosition(
+        makeLabel(
+            "AI ENGINE  •  EXPERIMENTAL",
+            "chatFont.fnt",
+            0.22f,
             panelX + panelW / 2.f,
-            panelY + 25.f
-        );
-
-        this->addChild(
-            footer,
-            3
+            panelY + 19.f
         );
 
 
@@ -941,7 +662,16 @@ protected:
 
     void onAddMusic(CCObject*) {
 
+        // ----------------------------------------------------
+        // OPCIONES DEL SELECTOR
+        // ----------------------------------------------------
+
         geode::utils::file::FilePickOptions options;
+
+
+        // ----------------------------------------------------
+        // FILTRO MP3
+        // ----------------------------------------------------
 
         geode::utils::file::FilePickOptions::Filter mp3Filter;
 
@@ -957,7 +687,12 @@ protected:
         );
 
 
+        // ----------------------------------------------------
+        // ABRIR SELECTOR DE ANDROID
+        // ----------------------------------------------------
+
         geode::async::spawn(
+
             geode::utils::file::pick(
                 geode::utils::file::PickMode::OpenFile,
                 options
@@ -967,39 +702,60 @@ protected:
                 geode::utils::file::PickResult result
             ) {
 
+                // ============================================
+                // ERROR
+                // ============================================
+
                 if (!result.isOk()) {
 
                     FLAlertLayer::create(
-                        "AI LEVEL GENERATOR",
-                        "No se selecciono ningun archivo.",
+                        "MUSICA",
+                        "No se pudo abrir el selector de archivos.",
                         "OK"
                     )->show();
 
                     return;
                 }
 
+
+                // ============================================
+                // ARCHIVO SELECCIONADO
+                // ============================================
+
                 auto selected =
                     result.unwrap();
 
-                if (!selected)
-                    return;
 
+                // ============================================
+                // CANCELADO
+                // ============================================
+
+                if (!selected) {
+                    return;
+                }
+
+
+                // ============================================
+                // GUARDAR RUTA
+                // ============================================
 
                 m_musicPath =
                     selected.value();
 
 
+                // ============================================
+                // COMPROBAR EXTENSION
+                // ============================================
+
                 std::string extension =
                     m_musicPath.extension().string();
+
 
                 std::transform(
                     extension.begin(),
                     extension.end(),
                     extension.begin(),
-
-                    [](
-                        unsigned char c
-                    ) {
+                    [](unsigned char c) {
 
                         return static_cast<char>(
                             std::tolower(c)
@@ -1008,19 +764,32 @@ protected:
                 );
 
 
+                // ============================================
+                // SOLO MP3
+                // ============================================
+
                 if (extension != ".mp3") {
 
                     m_musicPath.clear();
 
                     m_hasMusic = false;
 
-                    m_musicName->setString(
-                        "Ninguna musica seleccionada"
-                    );
+
+                    if (m_musicName) {
+
+                        m_musicName->setString(
+                            "Solo archivos MP3"
+                        );
+
+                        m_musicName->setScale(
+                            0.29f
+                        );
+                    }
+
 
                     FLAlertLayer::create(
-                        "AI LEVEL GENERATOR",
-                        "Solo se permiten archivos MP3.",
+                        "MUSICA",
+                        "Selecciona una cancion en formato MP3.",
                         "OK"
                     )->show();
 
@@ -1028,49 +797,86 @@ protected:
                 }
 
 
+                // ============================================
+                // OBTENER NOMBRE
+                // ============================================
+
                 std::string songName =
                     m_musicPath.stem().string();
 
 
-                if (songName.empty())
+                if (songName.empty()) {
+
                     songName =
                         m_musicPath.filename().string();
+                }
 
+
+                // ============================================
+                // GUARDAR ESTADO
+                // ============================================
 
                 m_hasMusic = true;
 
                 m_hasAnalysis = false;
 
 
-                m_analysisStatus->setString(
-                    "Sin analisis"
-                );
+                // ============================================
+                // ACTUALIZAR ANALISIS
+                // ============================================
 
-                m_generationStatus->setString(
-                    "Sin generar"
-                );
+                if (m_analysisStatus) {
 
-                m_musicName->setString(
-                    songName.c_str()
-                );
+                    m_analysisStatus->setString(
+                        "Sin analisis"
+                    );
+                }
 
 
-                float scale =
-                    0.65f;
+                if (m_generationStatus) {
 
-                if (songName.length() > 32)
-                    scale = 0.50f;
+                    m_generationStatus->setString(
+                        "Sin generar"
+                    );
+                }
 
-                else if (songName.length() > 24)
-                    scale = 0.56f;
 
-                m_musicName->setScale(
-                    scale
-                );
+                // ============================================
+                // MOSTRAR NOMBRE
+                // ============================================
 
+                if (m_musicName) {
+
+                    m_musicName->setString(
+                        songName.c_str()
+                    );
+
+
+                    // Ajustar tamaño para nombres largos
+                    float scale = 0.29f;
+
+                    if (songName.length() > 25)
+                        scale = 0.25f;
+
+                    if (songName.length() > 35)
+                        scale = 0.22f;
+
+                    if (songName.length() > 45)
+                        scale = 0.19f;
+
+
+                    m_musicName->setScale(
+                        scale
+                    );
+                }
+
+
+                // ============================================
+                // CONFIRMACION
+                // ============================================
 
                 FLAlertLayer::create(
-                    "AI LEVEL GENERATOR",
+                    "MUSICA",
                     "Cancion agregada correctamente.",
                     "OK"
                 )->show();
@@ -1097,144 +903,23 @@ protected:
         }
 
 
-        if (m_isAnalyzing) {
+        m_hasAnalysis = true;
 
-            FLAlertLayer::create(
-                "AI LEVEL GENERATOR",
-                "El analisis ya esta en progreso.",
-                "OK"
-            )->show();
 
-            return;
+        if (m_analysisStatus) {
+
+            m_analysisStatus->setString(
+                "BPM  BEATS  ENERGIA"
+            );
         }
 
 
-        m_isAnalyzing = true;
+        if (m_generationStatus) {
 
-        m_hasAnalysis = false;
-
-        m_analysisStatus->setString(
-            "Decodificando MP3..."
-        );
-
-
-        auto musicPath =
-            m_musicPath;
-
-
-        geode::async::spawn(
-            geode::async::background(
-                [musicPath]() {
-
-                    AudioInfo info;
-
-                    bool success =
-                        decodeMP3(
-                            musicPath,
-                            info
-                        );
-
-                    return std::make_pair(
-                        success,
-                        info
-                    );
-                }
-            ),
-
-            [this](
-                std::pair<bool, AudioInfo> result
-            ) {
-
-                m_isAnalyzing = false;
-
-
-                if (!result.first) {
-
-                    m_analysisStatus->setString(
-                        "Error MP3"
-                    );
-
-                    FLAlertLayer::create(
-                        "AI LEVEL GENERATOR",
-                        "MPG123 no pudo decodificar el archivo MP3.",
-                        "OK"
-                    )->show();
-
-                    return;
-                }
-
-
-                const auto& info =
-                    result.second;
-
-
-                m_hasAnalysis = true;
-
-
-                char status[256];
-
-                std::snprintf(
-                    status,
-                    sizeof(status),
-                    "%.0f Hz  â€¢  %.1fs",
-                    static_cast<double>(
-                        info.sampleRate
-                    ),
-                    info.duration
-                );
-
-
-                m_analysisStatus->setString(
-                    status
-                );
-
-
-                m_generationStatus->setString(
-                    "PCM listo para analizar"
-                );
-
-
-                std::string message =
-                    "MP3 decodificado correctamente.\n\n";
-
-                message +=
-                    "Sample rate: " +
-                    std::to_string(
-                        info.sampleRate
-                    ) +
-                    " Hz\n";
-
-                message +=
-                    "Canales: " +
-                    std::to_string(
-                        info.channels
-                    ) +
-                    "\n";
-
-                message +=
-                    "Duracion: ";
-
-
-                char durationText[64];
-
-                std::snprintf(
-                    durationText,
-                    sizeof(durationText),
-                    "%.2f segundos",
-                    info.duration
-                );
-
-                message +=
-                    durationText;
-
-
-                FLAlertLayer::create(
-                    "ANALISIS MPG123",
-                    message.c_str(),
-                    "OK"
-                )->show();
-            }
-        );
+            m_generationStatus->setString(
+                "Listo para generar"
+            );
+        }
     }
 
 
@@ -1247,7 +932,7 @@ protected:
         if (!m_hasMusic) {
 
             FLAlertLayer::create(
-                "AI LEVEL GENERATOR",
+                "GENERADOR",
                 "Primero agrega una musica.",
                 "OK"
             )->show();
@@ -1259,7 +944,7 @@ protected:
         if (!m_hasAnalysis) {
 
             FLAlertLayer::create(
-                "AI LEVEL GENERATOR",
+                "GENERADOR",
                 "Primero analiza la musica.",
                 "OK"
             )->show();
@@ -1268,9 +953,18 @@ protected:
         }
 
 
+        if (m_generationStatus) {
+
+            m_generationStatus->setString(
+                "Generando..."
+            );
+        }
+
+
         FLAlertLayer::create(
             "AI LEVEL GENERATOR",
-            "El audio ya esta listo para la siguiente etapa del analizador.",
+            "La generacion automatica del nivel "
+            "se conectara en la siguiente fase.",
             "OK"
         )->show();
     }
@@ -1290,10 +984,15 @@ protected:
 
 public:
 
+    // ========================================================
+    // CREATE
+    // ========================================================
+
     static AIGeneratorPanel* create() {
 
         auto ret =
             new AIGeneratorPanel();
+
 
         if (
             ret &&
@@ -1305,7 +1004,11 @@ public:
             return ret;
         }
 
-        CC_SAFE_DELETE(ret);
+
+        CC_SAFE_DELETE(
+            ret
+        );
+
 
         return nullptr;
     }
@@ -1316,17 +1019,18 @@ public:
 // EDITOR UI
 // ============================================================
 
-class $modify(
-    AILGEditorUI,
-    EditorUI
-) {
+class $modify(AILGEditorUI, EditorUI) {
 
     struct Fields {
 
-        CCMenuItemSpriteExtra*
-            aiButton = nullptr;
+        CCMenuItemSpriteExtra* aiButton =
+            nullptr;
     };
 
+
+    // ========================================================
+    // INIT EDITOR
+    // ========================================================
 
     bool init(
         LevelEditorLayer* editorLayer
@@ -1334,23 +1038,37 @@ class $modify(
 
         if (!EditorUI::init(
             editorLayer
-        ))
-            return false;
+        )) {
 
+            return false;
+        }
+
+
+        // ====================================================
+        // SPRITE AI
+        // ====================================================
 
         auto sprite =
             ButtonSprite::create(
                 "AI",
-                65,
+                65.f,
                 true,
                 "goldFont.fnt",
                 "GJ_button_01.png",
-                30.f,
+                28.f,
                 1.f
             );
 
 
-        m_fields->aiButton =
+        if (!sprite)
+            return true;
+
+
+        // ====================================================
+        // BOTON AI
+        // ====================================================
+
+        auto button =
             CCMenuItemSpriteExtra::create(
                 sprite,
                 this,
@@ -1360,21 +1078,55 @@ class $modify(
             );
 
 
-        m_fields->aiButton->setPosition(
+        if (!button)
+            return true;
+
+
+        button->setScale(
+            0.75f
+        );
+
+
+        // ====================================================
+        // MENU
+        // ====================================================
+
+        auto menu =
+            CCMenu::create();
+
+
+        if (!menu)
+            return true;
+
+
+        menu->setPosition({
             185.f,
             75.f
+        });
+
+
+        menu->addChild(
+            button
         );
 
 
         this->addChild(
-            m_fields->aiButton,
+            menu,
             100
         );
+
+
+        m_fields->aiButton =
+            button;
 
 
         return true;
     }
 
+
+    // ========================================================
+    // ABRIR PANEL
+    // ========================================================
 
     void openAI(
         CCObject*
@@ -1383,19 +1135,13 @@ class $modify(
         auto panel =
             AIGeneratorPanel::create();
 
-        if (!panel)
-            return;
 
+        if (panel) {
 
-        auto editorLayer =
-            this->getParent();
-
-        if (!editorLayer)
-            return;
-
-        editorLayer->addChild(
-            panel,
-            1000
-        );
+            this->addChild(
+                panel,
+                1000
+            );
+        }
     }
 };
