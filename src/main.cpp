@@ -1,66 +1,52 @@
 #include <Geode/Geode.hpp>
-#include <Geode/modify/MenuLayer.hpp>
+#include <Geode/modify/EditorUI.hpp>
 
 using namespace geode::prelude;
 
-class AILGMainLayer : public FLAlertLayer {
+
+// ============================================================
+// PANEL DEL AI LEVEL GENERATOR
+// ============================================================
+
+class AIGeneratorPanel : public FLAlertLayer {
 protected:
-    CCLabelBMFont* m_songLabel = nullptr;
+
+    CCLabelBMFont* m_musicLabel = nullptr;
     CCLabelBMFont* m_statusLabel = nullptr;
     CCLabelBMFont* m_analysisLabel = nullptr;
 
     bool m_hasMusic = false;
 
-    // Crear texto
-    CCLabelBMFont* label(
+
+    CCLabelBMFont* createLabel(
         const char* text,
         const char* font,
         float scale,
         float x,
         float y
     ) {
-        auto l = CCLabelBMFont::create(text, font);
+        auto label = CCLabelBMFont::create(text, font);
 
-        if (!l)
+        if (!label)
             return nullptr;
 
-        l->setScale(scale);
-        l->setPosition({x, y});
-        this->addChild(l);
+        label->setScale(scale);
+        label->setPosition({x, y});
 
-        return l;
+        this->addChild(label);
+
+        return label;
     }
 
-    // Crear tarjeta
-    CCLayerColor* card(
-        float x,
-        float y,
-        float w,
-        float h
-    ) {
-        auto c = CCLayerColor::create(
-            ccc4(10, 24, 42, 235)
-        );
 
-        if (!c)
-            return nullptr;
-
-        c->setContentSize({w, h});
-        c->setPosition({x, y});
-
-        this->addChild(c, -1);
-
-        return c;
-    }
-
-    // Crear botón
-    CCMenuItemSpriteExtra* button(
+    CCMenuItemSpriteExtra* createButton(
         const char* text,
         SEL_MenuHandler callback,
         float x,
         float y,
-        float width = 135.f
+        float width = 120.f
     ) {
+
         auto sprite = ButtonSprite::create(
             text,
             width,
@@ -74,94 +60,91 @@ protected:
         if (!sprite)
             return nullptr;
 
-        auto item = CCMenuItemSpriteExtra::create(
+        auto button = CCMenuItemSpriteExtra::create(
             sprite,
             this,
             callback
         );
 
-        if (!item)
+        if (!button)
             return nullptr;
 
-        item->setPosition({x, y});
+        button->setPosition({x, y});
 
-        return item;
+        return button;
     }
+
 
     bool init() {
 
-        // Ventana principal
+        // Ventana pequeña y controlada
         if (!FLAlertLayer::init(
             nullptr,
             "AI LEVEL GENERATOR",
             " ",
             "CERRAR",
             nullptr,
-            520.f,
+            420.f,
             false,
-            330.f,
-            1.f
+            260.f,
+            0.9f
         )) {
             return false;
         }
 
-        // IMPORTANTE:
-        // Usamos el tamaño de la ventana del FLAlertLayer,
-        // no el tamaño de toda la pantalla.
+
         auto size = this->getContentSize();
 
         float cx = size.width / 2.f;
 
-        // ==========================================
-        // SUBTITULO
-        // ==========================================
 
-        label(
+        // ====================================================
+        // SUBTITULO
+        // ====================================================
+
+        createLabel(
             "MUSIC  ->  ANALYSIS  ->  GENERATION",
-            "goldFont.fnt",
+            "chatFont.fnt",
             0.34f,
             cx,
-            276.f
+            205.f
         );
 
-        // ==========================================
-        // TARJETA DE MUSICA
-        // ==========================================
 
-        card(
-            35.f,
-            175.f,
-            450.f,
-            85.f
-        );
+        // ====================================================
+        // MUSICA
+        // ====================================================
 
-        label(
+        createLabel(
             "MUSICA",
             "goldFont.fnt",
-            0.38f,
-            105.f,
-            240.f
+            0.40f,
+            75.f,
+            165.f
         );
 
-        m_songLabel = label(
-            "Ninguna musica seleccionada",
+
+        m_musicLabel = createLabel(
+            "Ninguna seleccionada",
             "chatFont.fnt",
-            0.45f,
-            245.f,
-            222.f
+            0.42f,
+            210.f,
+            165.f
         );
 
-        m_statusLabel = label(
+
+        m_statusLabel = createLabel(
             "LISTO",
             "chatFont.fnt",
-            0.40f,
-            100.f,
-            194.f
+            0.34f,
+            75.f,
+            140.f
         );
 
-        // ==========================================
-        // MENU DE BOTONES
-        // ==========================================
+
+        // ====================================================
+        // BOTONES
+        // ====================================================
 
         auto menu = CCMenu::create();
 
@@ -170,35 +153,42 @@ protected:
 
         menu->setPosition({0.f, 0.f});
 
-        // Boton agregar musica
-        auto add = button(
-            "AGREGAR MUSICA",
-            menu_selector(AILGMainLayer::onAddMusic),
-            390.f,
-            220.f,
-            125.f
+
+        auto addMusic = createButton(
+            "AGREGAR",
+            menu_selector(
+                AIGeneratorPanel::onAddMusic
+            ),
+            335.f,
+            165.f,
+            100.f
         );
 
-        // Boton analizar
-        auto analyze = button(
+
+        auto analyze = createButton(
             "ANALIZAR",
-            menu_selector(AILGMainLayer::onAnalyze),
-            170.f,
-            85.f,
-            125.f
+            menu_selector(
+                AIGeneratorPanel::onAnalyze
+            ),
+            130.f,
+            90.f,
+            110.f
         );
 
-        // Boton generar
-        auto generate = button(
-            "GENERAR NIVEL",
-            menu_selector(AILGMainLayer::onGenerate),
-            350.f,
-            85.f,
-            135.f
+
+        auto generate = createButton(
+            "GENERAR",
+            menu_selector(
+                AIGeneratorPanel::onGenerate
+            ),
+            290.f,
+            90.f,
+            110.f
         );
 
-        if (add)
-            menu->addChild(add);
+
+        if (addMusic)
+            menu->addChild(addMusic);
 
         if (analyze)
             menu->addChild(analyze);
@@ -209,94 +199,74 @@ protected:
             menu->addChild(generate);
         }
 
-        this->addChild(menu, 5);
 
-        // ==========================================
-        // TARJETA ANALISIS IA
-        // ==========================================
+        this->addChild(menu, 10);
 
-        card(
-            35.f,
-            105.f,
-            450.f,
+
+        // ====================================================
+        // ANALISIS
+        // ====================================================
+
+        createLabel(
+            "ANALISIS",
+            "goldFont.fnt",
+            0.36f,
+            75.f,
             55.f
         );
 
-        label(
-            "ANALISIS IA",
-            "goldFont.fnt",
-            0.36f,
-            100.f,
-            145.f
-        );
 
-        m_analysisLabel = label(
-            "BPM   BEATS   ENERGIA   SECCIONES",
-            "chatFont.fnt",
-            0.38f,
-            300.f,
-            145.f
-        );
-
-        // ==========================================
-        // DESCRIPCION
-        // ==========================================
-
-        label(
-            "La IA decidira la sincronizacion del gameplay.",
+        m_analysisLabel = createLabel(
+            "BPM   BEATS   ENERGIA",
             "chatFont.fnt",
             0.34f,
-            cx,
-            118.f
+            250.f,
+            55.f
         );
 
-        // ==========================================
-        // FOOTER
-        // ==========================================
-
-        label(
-            "AI ENGINE  •  EXPERIMENTAL",
-            "chatFont.fnt",
-            0.28f,
-            cx,
-            67.f
-        );
 
         return true;
     }
 
-    // ==========================================
+
+    // ========================================================
     // AGREGAR MUSICA
-    // ==========================================
+    // ========================================================
 
     void onAddMusic(CCObject*) {
 
         m_hasMusic = true;
 
-        if (m_songLabel) {
-            m_songLabel->setString(
-                "Musica de prueba seleccionada"
+
+        if (m_musicLabel) {
+
+            m_musicLabel->setString(
+                "Musica de prueba"
             );
         }
 
+
         if (m_statusLabel) {
+
             m_statusLabel->setString(
                 "MUSICA LISTA"
             );
         }
 
+
         FLAlertLayer::create(
             "MUSICA",
-            "Musica de prueba seleccionada.\n"
+            "Musica de prueba seleccionada.\n\n"
             "El selector real de archivos de Android "
-            "sera conectado en la siguiente fase.",
+            "se conectara en la siguiente fase.",
             "OK"
         )->show();
     }
 
-    // ==========================================
+
+    // ========================================================
     // ANALIZAR
-    // ==========================================
+    // ========================================================
 
     void onAnalyze(CCObject*) {
 
@@ -311,50 +281,59 @@ protected:
             return;
         }
 
+
         if (m_statusLabel) {
+
             m_statusLabel->setString(
-                "ANALIZANDO"
+                "ANALIZANDO..."
             );
         }
 
+
         if (m_analysisLabel) {
+
             m_analysisLabel->setString(
-                "BPM | BEATS | ENERGIA | DROPS | SECCIONES"
+                "BPM   BEATS   ENERGIA   DROPS"
             );
         }
+
 
         FLAlertLayer::create(
             "ANALISIS IA",
-            "Interfaz de analisis lista.\n"
-            "La proxima fase conectara el analizador "
-            "real de audio.",
-            "CONTINUAR"
+            "Analisis preparado.\n\n"
+            "La siguiente fase conectara "
+            "el analizador real de audio.",
+            "OK"
         )->show();
     }
 
-    // ==========================================
-    // GENERAR NIVEL
-    // ==========================================
+
+    // ========================================================
+    // GENERAR
+    // ========================================================
 
     void onGenerate(CCObject*) {
 
         FLAlertLayer::create(
             "GENERADOR",
-            "La generacion del nivel se habilitara "
-            "despues de conectar\n"
-            "el analisis real de la musica.",
+            "La generacion automatica del nivel "
+            "se conectara despues del analisis "
+            "real de la musica.",
             "OK"
         )->show();
     }
 
+
 public:
 
-    static AILGMainLayer* create() {
+    static AIGeneratorPanel* create() {
 
-        auto ret = new AILGMainLayer();
+        auto ret = new AIGeneratorPanel();
 
         if (ret && ret->init()) {
+
             ret->autorelease();
+
             return ret;
         }
 
@@ -365,70 +344,116 @@ public:
 };
 
 
-// ==============================================
-// BOTON DEL MOD EN EL MENU PRINCIPAL DE GD
-// ==============================================
 
-class $modify(AILGMenuLayer, MenuLayer) {
+// ============================================================
+// EDITOR DE NIVELES
+// ============================================================
 
-    struct Fields {};
+class $modify(AILGEditorUI, EditorUI) {
 
-    bool init() {
+    struct Fields {
 
-        if (!MenuLayer::init())
+        CCMenuItemSpriteExtra* aiButton = nullptr;
+
+    };
+
+
+    bool init(LevelEditorLayer* editorLayer) {
+
+        if (!EditorUI::init(editorLayer))
             return false;
+
 
         auto size =
             CCDirector::sharedDirector()->getWinSize();
 
-        // Icono del mod
+
+        // ====================================================
+        // BOTON AI
+        // ====================================================
+
         auto sprite =
-            CCSprite::createWithSpriteFrameName(
-                "GJ_infoIcon_001.png"
+            ButtonSprite::create(
+                "AI",
+                65.f,
+                true,
+                "goldFont.fnt",
+                "GJ_button_01.png",
+                28.f,
+                1.f
             );
+
 
         if (!sprite)
             return true;
 
-        auto btn =
+
+        auto button =
             CCMenuItemSpriteExtra::create(
                 sprite,
                 this,
                 menu_selector(
-                    AILGMenuLayer::openGenerator
+                    AILGEditorUI::openAI
                 )
             );
 
-        if (!btn)
+
+        if (!button)
             return true;
 
-        btn->setScale(0.8f);
 
-        // Menu del boton
+        // Tamaño pequeño para que no tape el editor
+        button->setScale(0.72f);
+
+
+        // ====================================================
+        // POSICION DEL BOTON
+        //
+        // Se coloca en la zona izquierda del editor,
+        // debajo de los controles superiores.
+        // ====================================================
+
         auto menu = CCMenu::create();
 
         if (!menu)
             return true;
 
+
         menu->setPosition({
-            size.width - 35.f,
-            35.f
+            190.f,
+            75.f
         });
 
-        menu->addChild(btn);
 
-        this->addChild(menu, 10);
+        menu->addChild(button);
+
+
+        this->addChild(
+            menu,
+            100
+        );
+
+
+        m_fields->aiButton = button;
+
 
         return true;
     }
 
-    // Abrir generador
-    void openGenerator(CCObject*) {
 
-        auto generator = AILGMainLayer::create();
+    // ========================================================
+    // ABRIR AI
+    // ========================================================
 
-        if (generator) {
-            generator->show();
+    void openAI(CCObject*) {
+
+        auto panel =
+            AIGeneratorPanel::create();
+
+
+        if (panel) {
+
+            panel->show();
         }
     }
 };
