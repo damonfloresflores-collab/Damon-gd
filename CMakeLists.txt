@@ -5,51 +5,30 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(AILevelGenerator VERSION 0.2.0)
 
-# ============================================================
-# GEODE SDK
-# ============================================================
-
 if (NOT DEFINED ENV{GEODE_SDK})
     message(FATAL_ERROR
         "Unable to find Geode SDK! Please define GEODE_SDK environment variable to point to Geode"
     )
 endif()
 
-
-# ============================================================
-# MPG123 1.33.7
-# ============================================================
-
 include(FetchContent)
 
-# No necesitamos programas de MPG123.
+# MPG123
 set(BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
-
-# No necesitamos libout123.
 set(BUILD_LIBOUT123 OFF CACHE BOOL "" FORCE)
-
-# Queremos la biblioteca integrada en nuestro mod.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-
 
 FetchContent_Declare(
     mpg123
     URL https://downloads.sourceforge.net/project/mpg123/mpg123/1.33.7/mpg123-1.33.7.tar.bz2
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
-
 
 FetchContent_GetProperties(mpg123)
 
 if (NOT mpg123_POPULATED)
-
     FetchContent_Populate(mpg123)
-
 endif()
-
-
-# ============================================================
-# CONSTRUIR MPG123
-# ============================================================
 
 add_subdirectory(
     ${mpg123_SOURCE_DIR}/ports/cmake
@@ -57,15 +36,10 @@ add_subdirectory(
     EXCLUDE_FROM_ALL
 )
 
-
-# ============================================================
-# CODIGO DEL MOD
-# ============================================================
-
+# Tu código
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 )
-
 
 add_library(
     ${PROJECT_NAME}
@@ -73,36 +47,28 @@ add_library(
     ${SOURCES}
 )
 
-
 target_include_directories(
     ${PROJECT_NAME}
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+
+    # Headers de MPG123
+    ${mpg123_SOURCE_DIR}/src/libmpg123
+    ${CMAKE_CURRENT_BINARY_DIR}/mpg123-build/src/libmpg123
 )
 
-
-# ============================================================
-# MPG123
-# ============================================================
-
 # IMPORTANTE:
-# No usar PRIVATE/PUBLIC aqui.
-# Geode setup_geode_mod() utiliza la firma antigua.
+# Sin PRIVATE/PUBLIC aquí porque Geode setup_geode_mod()
+# usa la firma antigua de target_link_libraries.
 target_link_libraries(
     ${PROJECT_NAME}
     libmpg123
 )
 
-
-# ============================================================
-# GEODE
-# ============================================================
-
 add_subdirectory(
     $ENV{GEODE_SDK}
     ${CMAKE_CURRENT_BINARY_DIR}/geode
 )
-
 
 setup_geode_mod(
     ${PROJECT_NAME}
