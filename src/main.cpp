@@ -1,11 +1,18 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/EditorUI.hpp>
+#include <Geode/utils/async.hpp>
+#include <Geode/utils/file.hpp>
+
+#include <filesystem>
+#include <algorithm>
+#include <cctype>
+#include <string>
 
 using namespace geode::prelude;
 
 
 // ============================================================
-// AI LEVEL GENERATOR - PANEL
+// AI LEVEL GENERATOR
 // ============================================================
 
 class AIGeneratorPanel : public CCLayer {
@@ -15,12 +22,15 @@ protected:
     CCLabelBMFont* m_analysisStatus = nullptr;
     CCLabelBMFont* m_generationStatus = nullptr;
 
+    // Ruta del MP3 seleccionado
+    std::filesystem::path m_musicPath;
+
     bool m_hasMusic = false;
     bool m_hasAnalysis = false;
 
 
     // ========================================================
-    // LABEL
+    // CREAR LABEL
     // ========================================================
 
     CCLabelBMFont* makeLabel(
@@ -31,22 +41,32 @@ protected:
         float y
     ) {
 
-        auto label = CCLabelBMFont::create(text, font);
+        auto label = CCLabelBMFont::create(
+            text,
+            font
+        );
 
         if (!label)
             return nullptr;
 
         label->setScale(scale);
-        label->setPosition({x, y});
 
-        this->addChild(label, 20);
+        label->setPosition({
+            x,
+            y
+        });
+
+        this->addChild(
+            label,
+            20
+        );
 
         return label;
     }
 
 
     // ========================================================
-    // BUTTON
+    // CREAR BOTON
     // ========================================================
 
     CCMenuItemSpriteExtra* makeButton(
@@ -70,23 +90,27 @@ protected:
         if (!sprite)
             return nullptr;
 
-        auto button = CCMenuItemSpriteExtra::create(
-            sprite,
-            this,
-            callback
-        );
+        auto button =
+            CCMenuItemSpriteExtra::create(
+                sprite,
+                this,
+                callback
+            );
 
         if (!button)
             return nullptr;
 
-        button->setPosition({x, y});
+        button->setPosition({
+            x,
+            y
+        });
 
         return button;
     }
 
 
     // ========================================================
-    // CARD
+    // CREAR TARJETA
     // ========================================================
 
     CCLayerColor* makeCard(
@@ -96,9 +120,15 @@ protected:
         float height
     ) {
 
-        auto card = CCLayerColor::create(
-            ccc4(5, 32, 58, 245)
-        );
+        auto card =
+            CCLayerColor::create(
+                ccc4(
+                    5,
+                    32,
+                    58,
+                    245
+                )
+            );
 
         if (!card)
             return nullptr;
@@ -113,7 +143,10 @@ protected:
             y
         });
 
-        this->addChild(card, 5);
+        this->addChild(
+            card,
+            5
+        );
 
         return card;
     }
@@ -128,24 +161,35 @@ protected:
         if (!CCLayer::init())
             return false;
 
+
         auto screen =
             CCDirector::sharedDirector()->getWinSize();
 
-        this->setContentSize(screen);
+
+        this->setContentSize(
+            screen
+        );
 
 
         // ====================================================
-        // DARK OVERLAY
+        // FONDO OSCURO
         // ====================================================
 
         auto overlay =
             CCLayerColor::create(
-                ccc4(0, 0, 0, 150)
+                ccc4(
+                    0,
+                    0,
+                    0,
+                    150
+                )
             );
 
         if (overlay) {
 
-            overlay->setContentSize(screen);
+            overlay->setContentSize(
+                screen
+            );
 
             overlay->setPosition({
                 0.f,
@@ -160,27 +204,33 @@ protected:
 
 
         // ====================================================
-        // PANEL SIZE
-        // REDUCIDO
+        // TAMAÑO DEL PANEL
         // ====================================================
 
         const float panelW = 540.f;
         const float panelH = 320.f;
 
+
         const float panelX =
             (screen.width - panelW) / 2.f;
+
 
         const float panelY =
             (screen.height - panelH) / 2.f;
 
 
         // ====================================================
-        // CYAN BORDER
+        // BORDE CELESTE
         // ====================================================
 
         auto border =
             CCLayerColor::create(
-                ccc4(0, 190, 255, 255)
+                ccc4(
+                    0,
+                    190,
+                    255,
+                    255
+                )
             );
 
         if (border) {
@@ -203,12 +253,17 @@ protected:
 
 
         // ====================================================
-        // MAIN PANEL
+        // PANEL PRINCIPAL
         // ====================================================
 
         auto panel =
             CCLayerColor::create(
-                ccc4(5, 22, 42, 255)
+                ccc4(
+                    5,
+                    22,
+                    42,
+                    255
+                )
             );
 
         if (panel) {
@@ -231,12 +286,17 @@ protected:
 
 
         // ====================================================
-        // HEADER
+        // CABECERA
         // ====================================================
 
         auto header =
             CCLayerColor::create(
-                ccc4(8, 45, 75, 255)
+                ccc4(
+                    8,
+                    45,
+                    75,
+                    255
+                )
             );
 
         if (header) {
@@ -259,7 +319,7 @@ protected:
 
 
         // ====================================================
-        // INFO ICON
+        // ICONO INFO
         // ====================================================
 
         auto icon =
@@ -269,7 +329,9 @@ protected:
 
         if (icon) {
 
-            icon->setScale(0.65f);
+            icon->setScale(
+                0.65f
+            );
 
             icon->setPosition({
                 panelX + 42.f,
@@ -284,7 +346,7 @@ protected:
 
 
         // ====================================================
-        // TITLE
+        // TITULO
         // ====================================================
 
         makeLabel(
@@ -297,7 +359,7 @@ protected:
 
 
         // ====================================================
-        // SUBTITLE
+        // SUBTITULO
         // ====================================================
 
         makeLabel(
@@ -310,7 +372,7 @@ protected:
 
 
         // ====================================================
-        // INFORMATION CARD
+        // TARJETA DE INFORMACION
         // ====================================================
 
         makeCard(
@@ -322,7 +384,7 @@ protected:
 
 
         // ====================================================
-        // MUSIC
+        // MUSICA
         // ====================================================
 
         makeLabel(
@@ -332,6 +394,7 @@ protected:
             panelX + 72.f,
             panelY + 196.f
         );
+
 
         m_musicName =
             makeLabel(
@@ -344,12 +407,17 @@ protected:
 
 
         // ====================================================
-        // LINE 1
+        // LINEA 1
         // ====================================================
 
         auto line1 =
             CCLayerColor::create(
-                ccc4(30, 100, 145, 255)
+                ccc4(
+                    30,
+                    100,
+                    145,
+                    255
+                )
             );
 
         if (line1) {
@@ -372,7 +440,7 @@ protected:
 
 
         // ====================================================
-        // ANALYSIS
+        // ANALISIS
         // ====================================================
 
         makeLabel(
@@ -382,6 +450,7 @@ protected:
             panelX + 76.f,
             panelY + 139.f
         );
+
 
         m_analysisStatus =
             makeLabel(
@@ -394,12 +463,17 @@ protected:
 
 
         // ====================================================
-        // LINE 2
+        // LINEA 2
         // ====================================================
 
         auto line2 =
             CCLayerColor::create(
-                ccc4(30, 100, 145, 255)
+                ccc4(
+                    30,
+                    100,
+                    145,
+                    255
+                )
             );
 
         if (line2) {
@@ -422,7 +496,7 @@ protected:
 
 
         // ====================================================
-        // GENERATION
+        // GENERACION
         // ====================================================
 
         makeLabel(
@@ -432,6 +506,7 @@ protected:
             panelX + 82.f,
             panelY + 84.f
         );
+
 
         m_generationStatus =
             makeLabel(
@@ -444,13 +519,15 @@ protected:
 
 
         // ====================================================
-        // BUTTON MENU
+        // MENU
         // ====================================================
 
-        auto menu = CCMenu::create();
+        auto menu =
+            CCMenu::create();
 
         if (!menu)
             return false;
+
 
         menu->setPosition({
             0.f,
@@ -459,7 +536,7 @@ protected:
 
 
         // ====================================================
-        // ADD
+        // AGREGAR
         // ====================================================
 
         auto addButton =
@@ -475,7 +552,7 @@ protected:
 
 
         // ====================================================
-        // ANALYZE
+        // ANALIZAR
         // ====================================================
 
         auto analyzeButton =
@@ -491,7 +568,7 @@ protected:
 
 
         // ====================================================
-        // GENERATE
+        // GENERAR
         // ====================================================
 
         auto generateButton =
@@ -507,16 +584,26 @@ protected:
 
 
         if (addButton)
-            menu->addChild(addButton);
+            menu->addChild(
+                addButton
+            );
+
 
         if (analyzeButton)
-            menu->addChild(analyzeButton);
+            menu->addChild(
+                analyzeButton
+            );
+
 
         if (generateButton) {
 
-            generateButton->setEnabled(false);
+            generateButton->setEnabled(
+                false
+            );
 
-            generateButton->setOpacity(120);
+            generateButton->setOpacity(
+                120
+            );
 
             menu->addChild(
                 generateButton
@@ -525,7 +612,7 @@ protected:
 
 
         // ====================================================
-        // CLOSE
+        // CERRAR
         // ====================================================
 
         auto closeButton =
@@ -539,8 +626,11 @@ protected:
                 48.f
             );
 
+
         if (closeButton)
-            menu->addChild(closeButton);
+            menu->addChild(
+                closeButton
+            );
 
 
         this->addChild(
@@ -567,32 +657,236 @@ protected:
 
 
     // ========================================================
-    // ADD MUSIC
+    // AGREGAR MUSICA
     // ========================================================
 
     void onAddMusic(CCObject*) {
 
-        m_hasMusic = true;
+        // ----------------------------------------------------
+        // OPCIONES DEL SELECTOR
+        // ----------------------------------------------------
 
-        if (m_musicName) {
+        geode::utils::file::FilePickOptions options;
 
-            m_musicName->setString(
-                "Musica seleccionada"
-            );
-        }
 
-        FLAlertLayer::create(
-            "MUSICA",
-            "Musica de prueba seleccionada.\n\n"
-            "El selector real de archivos de Android "
-            "se conectara en la siguiente fase.",
-            "OK"
-        )->show();
+        // ----------------------------------------------------
+        // FILTRO MP3
+        // ----------------------------------------------------
+
+        geode::utils::file::FilePickOptions::Filter mp3Filter;
+
+        mp3Filter.description =
+            "Audio MP3";
+
+        mp3Filter.files.insert(
+            ".mp3"
+        );
+
+        options.filters.push_back(
+            mp3Filter
+        );
+
+
+        // ----------------------------------------------------
+        // ABRIR SELECTOR DE ANDROID
+        // ----------------------------------------------------
+
+        geode::async::spawn(
+
+            geode::utils::file::pick(
+                geode::utils::file::PickMode::OpenFile,
+                options
+            ),
+
+            [this](
+                geode::utils::file::PickResult result
+            ) {
+
+                // ============================================
+                // ERROR
+                // ============================================
+
+                if (!result.isOk()) {
+
+                    FLAlertLayer::create(
+                        "MUSICA",
+                        "No se pudo abrir el selector de archivos.",
+                        "OK"
+                    )->show();
+
+                    return;
+                }
+
+
+                // ============================================
+                // ARCHIVO SELECCIONADO
+                // ============================================
+
+                auto selected =
+                    result.unwrap();
+
+
+                // ============================================
+                // CANCELADO
+                // ============================================
+
+                if (!selected) {
+                    return;
+                }
+
+
+                // ============================================
+                // GUARDAR RUTA
+                // ============================================
+
+                m_musicPath =
+                    selected.value();
+
+
+                // ============================================
+                // COMPROBAR EXTENSION
+                // ============================================
+
+                std::string extension =
+                    m_musicPath.extension().string();
+
+
+                std::transform(
+                    extension.begin(),
+                    extension.end(),
+                    extension.begin(),
+                    [](unsigned char c) {
+
+                        return static_cast<char>(
+                            std::tolower(c)
+                        );
+                    }
+                );
+
+
+                // ============================================
+                // SOLO MP3
+                // ============================================
+
+                if (extension != ".mp3") {
+
+                    m_musicPath.clear();
+
+                    m_hasMusic = false;
+
+
+                    if (m_musicName) {
+
+                        m_musicName->setString(
+                            "Solo archivos MP3"
+                        );
+
+                        m_musicName->setScale(
+                            0.29f
+                        );
+                    }
+
+
+                    FLAlertLayer::create(
+                        "MUSICA",
+                        "Selecciona una cancion en formato MP3.",
+                        "OK"
+                    )->show();
+
+                    return;
+                }
+
+
+                // ============================================
+                // OBTENER NOMBRE
+                // ============================================
+
+                std::string songName =
+                    m_musicPath.stem().string();
+
+
+                if (songName.empty()) {
+
+                    songName =
+                        m_musicPath.filename().string();
+                }
+
+
+                // ============================================
+                // GUARDAR ESTADO
+                // ============================================
+
+                m_hasMusic = true;
+
+                m_hasAnalysis = false;
+
+
+                // ============================================
+                // ACTUALIZAR ANALISIS
+                // ============================================
+
+                if (m_analysisStatus) {
+
+                    m_analysisStatus->setString(
+                        "Sin analisis"
+                    );
+                }
+
+
+                if (m_generationStatus) {
+
+                    m_generationStatus->setString(
+                        "Sin generar"
+                    );
+                }
+
+
+                // ============================================
+                // MOSTRAR NOMBRE
+                // ============================================
+
+                if (m_musicName) {
+
+                    m_musicName->setString(
+                        songName.c_str()
+                    );
+
+
+                    // Ajustar tamaño para nombres largos
+                    float scale = 0.29f;
+
+                    if (songName.length() > 25)
+                        scale = 0.25f;
+
+                    if (songName.length() > 35)
+                        scale = 0.22f;
+
+                    if (songName.length() > 45)
+                        scale = 0.19f;
+
+
+                    m_musicName->setScale(
+                        scale
+                    );
+                }
+
+
+                // ============================================
+                // CONFIRMACION
+                // ============================================
+
+                FLAlertLayer::create(
+                    "MUSICA",
+                    "Cancion agregada correctamente.",
+                    "OK"
+                )->show();
+            }
+        );
     }
 
 
     // ========================================================
-    // ANALYZE
+    // ANALIZAR
     // ========================================================
 
     void onAnalyze(CCObject*) {
@@ -608,7 +902,9 @@ protected:
             return;
         }
 
+
         m_hasAnalysis = true;
+
 
         if (m_analysisStatus) {
 
@@ -616,6 +912,7 @@ protected:
                 "BPM  BEATS  ENERGIA"
             );
         }
+
 
         if (m_generationStatus) {
 
@@ -627,7 +924,7 @@ protected:
 
 
     // ========================================================
-    // GENERATE
+    // GENERAR
     // ========================================================
 
     void onGenerate(CCObject*) {
@@ -643,6 +940,7 @@ protected:
             return;
         }
 
+
         if (!m_hasAnalysis) {
 
             FLAlertLayer::create(
@@ -654,12 +952,14 @@ protected:
             return;
         }
 
+
         if (m_generationStatus) {
 
             m_generationStatus->setString(
                 "Generando..."
             );
         }
+
 
         FLAlertLayer::create(
             "AI LEVEL GENERATOR",
@@ -671,7 +971,7 @@ protected:
 
 
     // ========================================================
-    // CLOSE
+    // CERRAR
     // ========================================================
 
     void onClose(CCObject*) {
@@ -684,10 +984,15 @@ protected:
 
 public:
 
+    // ========================================================
+    // CREATE
+    // ========================================================
+
     static AIGeneratorPanel* create() {
 
         auto ret =
             new AIGeneratorPanel();
+
 
         if (
             ret &&
@@ -699,7 +1004,11 @@ public:
             return ret;
         }
 
-        CC_SAFE_DELETE(ret);
+
+        CC_SAFE_DELETE(
+            ret
+        );
+
 
         return nullptr;
     }
@@ -714,21 +1023,29 @@ class $modify(AILGEditorUI, EditorUI) {
 
     struct Fields {
 
-        CCMenuItemSpriteExtra* aiButton = nullptr;
-
+        CCMenuItemSpriteExtra* aiButton =
+            nullptr;
     };
 
+
+    // ========================================================
+    // INIT EDITOR
+    // ========================================================
 
     bool init(
         LevelEditorLayer* editorLayer
     ) {
 
-        if (!EditorUI::init(editorLayer))
+        if (!EditorUI::init(
+            editorLayer
+        )) {
+
             return false;
+        }
 
 
         // ====================================================
-        // AI BUTTON
+        // SPRITE AI
         // ====================================================
 
         auto sprite =
@@ -742,9 +1059,14 @@ class $modify(AILGEditorUI, EditorUI) {
                 1.f
             );
 
+
         if (!sprite)
             return true;
 
+
+        // ====================================================
+        // BOTON AI
+        // ====================================================
 
         auto button =
             CCMenuItemSpriteExtra::create(
@@ -755,14 +1077,23 @@ class $modify(AILGEditorUI, EditorUI) {
                 )
             );
 
+
         if (!button)
             return true;
 
 
-        button->setScale(0.75f);
+        button->setScale(
+            0.75f
+        );
 
 
-        auto menu = CCMenu::create();
+        // ====================================================
+        // MENU
+        // ====================================================
+
+        auto menu =
+            CCMenu::create();
+
 
         if (!menu)
             return true;
@@ -773,7 +1104,10 @@ class $modify(AILGEditorUI, EditorUI) {
             75.f
         });
 
-        menu->addChild(button);
+
+        menu->addChild(
+            button
+        );
 
 
         this->addChild(
@@ -791,13 +1125,16 @@ class $modify(AILGEditorUI, EditorUI) {
 
 
     // ========================================================
-    // OPEN AI
+    // ABRIR PANEL
     // ========================================================
 
-    void openAI(CCObject*) {
+    void openAI(
+        CCObject*
+    ) {
 
         auto panel =
             AIGeneratorPanel::create();
+
 
         if (panel) {
 
