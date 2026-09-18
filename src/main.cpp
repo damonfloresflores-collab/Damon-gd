@@ -912,7 +912,7 @@ protected:
 
         auto footer =
             CCLabelBMFont::create(
-                "MP3  •  ANALISIS MUSICAL  •  GENERACION PROCEDURAL",
+                "MP3  â€¢  ANALISIS MUSICAL  â€¢  GENERACION PROCEDURAL",
                 "chatFont.fnt"
             );
 
@@ -1123,31 +1123,23 @@ protected:
 
 
         geode::async::spawn(
-            [musicPath]() -> arc::Future<std::pair<bool, AudioInfo>> {
+            geode::async::background(
+                [musicPath]() {
 
-                auto handle =
-                    geode::async::runtime().spawnBlocking<
-                        std::pair<bool, AudioInfo>
-                    >(
-                        [musicPath]() {
+                    AudioInfo info;
 
-                            AudioInfo info;
+                    bool success =
+                        decodeMP3(
+                            musicPath,
+                            info
+                        );
 
-                            bool success =
-                                decodeMP3(
-                                    musicPath,
-                                    info
-                                );
-
-                            return std::make_pair(
-                                success,
-                                info
-                            );
-                        }
+                    return std::make_pair(
+                        success,
+                        info
                     );
-
-                co_return co_await handle;
-            },
+                }
+            ),
 
             [this](
                 std::pair<bool, AudioInfo> result
@@ -1184,7 +1176,7 @@ protected:
                 std::snprintf(
                     status,
                     sizeof(status),
-                    "%.0f Hz  •  %.1fs",
+                    "%.0f Hz  â€¢  %.1fs",
                     static_cast<double>(
                         info.sampleRate
                     ),
@@ -1395,10 +1387,15 @@ class $modify(
             return;
 
 
-        this->getParent()
-            ->addChild(
-                panel,
-                1000
-            );
+        auto editorLayer =
+            this->getParent();
+
+        if (!editorLayer)
+            return;
+
+        editorLayer->addChild(
+            panel,
+            1000
+        );
     }
 };
