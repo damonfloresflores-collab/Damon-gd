@@ -5,7 +5,7 @@ using namespace geode::prelude;
 
 
 // ============================================================
-// AI LEVEL GENERATOR - PANEL PROPIO
+// AI LEVEL GENERATOR - PANEL
 // ============================================================
 
 class AIGeneratorPanel : public CCLayer {
@@ -20,7 +20,7 @@ protected:
 
 
     // ========================================================
-    // TEXTO
+    // LABEL
     // ========================================================
 
     CCLabelBMFont* makeLabel(
@@ -31,31 +31,22 @@ protected:
         float y
     ) {
 
-        auto label = CCLabelBMFont::create(
-            text,
-            font
-        );
+        auto label = CCLabelBMFont::create(text, font);
 
         if (!label)
             return nullptr;
 
         label->setScale(scale);
-        label->setPosition({
-            x,
-            y
-        });
+        label->setPosition({x, y});
 
-        this->addChild(
-            label,
-            20
-        );
+        this->addChild(label, 20);
 
         return label;
     }
 
 
     // ========================================================
-    // BOTON
+    // BUTTON
     // ========================================================
 
     CCMenuItemSpriteExtra* makeButton(
@@ -79,27 +70,23 @@ protected:
         if (!sprite)
             return nullptr;
 
-        auto button =
-            CCMenuItemSpriteExtra::create(
-                sprite,
-                this,
-                callback
-            );
+        auto button = CCMenuItemSpriteExtra::create(
+            sprite,
+            this,
+            callback
+        );
 
         if (!button)
             return nullptr;
 
-        button->setPosition({
-            x,
-            y
-        });
+        button->setPosition({x, y});
 
         return button;
     }
 
 
     // ========================================================
-    // TARJETA
+    // CARD
     // ========================================================
 
     CCLayerColor* makeCard(
@@ -110,12 +97,7 @@ protected:
     ) {
 
         auto card = CCLayerColor::create(
-            ccc4(
-                5,
-                32,
-                58,
-                245
-            )
+            ccc4(5, 32, 58, 245)
         );
 
         if (!card)
@@ -131,10 +113,7 @@ protected:
             y
         });
 
-        this->addChild(
-            card,
-            5
-        );
+        this->addChild(card, 5);
 
         return card;
     }
@@ -149,30 +128,19 @@ protected:
         if (!CCLayer::init())
             return false;
 
-
         auto screen =
             CCDirector::sharedDirector()->getWinSize();
-
-
-        // ====================================================
-        // ESTE LAYER OCUPA TODA LA PANTALLA
-        // ====================================================
 
         this->setContentSize(screen);
 
 
         // ====================================================
-        // FONDO OSCURO
+        // DARK OVERLAY
         // ====================================================
 
         auto overlay =
             CCLayerColor::create(
-                ccc4(
-                    0,
-                    0,
-                    0,
-                    150
-                )
+                ccc4(0, 0, 0, 150)
             );
 
         if (overlay) {
@@ -192,11 +160,12 @@ protected:
 
 
         // ====================================================
-        // TAMAÑO DEL PANEL
+        // PANEL SIZE
+        // REDUCIDO
         // ====================================================
 
-        const float panelW = 620.f;
-        const float panelH = 365.f;
+        const float panelW = 540.f;
+        const float panelH = 320.f;
 
         const float panelX =
             (screen.width - panelW) / 2.f;
@@ -206,17 +175,12 @@ protected:
 
 
         // ====================================================
-        // BORDE EXTERIOR
+        // CYAN BORDER
         // ====================================================
 
         auto border =
             CCLayerColor::create(
-                ccc4(
-                    0,
-                    190,
-                    255,
-                    255
-                )
+                ccc4(0, 190, 255, 255)
             );
 
         if (border) {
@@ -239,17 +203,12 @@ protected:
 
 
         // ====================================================
-        // PANEL PRINCIPAL
+        // MAIN PANEL
         // ====================================================
 
         auto panel =
             CCLayerColor::create(
-                ccc4(
-                    5,
-                    22,
-                    42,
-                    255
-                )
+                ccc4(5, 22, 42, 255)
             );
 
         if (panel) {
@@ -272,29 +231,24 @@ protected:
 
 
         // ====================================================
-        // CABECERA
+        // HEADER
         // ====================================================
 
         auto header =
             CCLayerColor::create(
-                ccc4(
-                    8,
-                    45,
-                    75,
-                    255
-                )
+                ccc4(8, 45, 75, 255)
             );
 
         if (header) {
 
             header->setContentSize({
                 panelW - 8.f,
-                82.f
+                70.f
             });
 
             header->setPosition({
                 panelX + 4.f,
-                panelY + panelH - 86.f
+                panelY + panelH - 74.f
             });
 
             this->addChild(
@@ -305,7 +259,7 @@ protected:
 
 
         // ====================================================
-        // ICONO AI
+        // INFO ICON
         // ====================================================
 
         auto icon =
@@ -315,13 +269,11 @@ protected:
 
         if (icon) {
 
-            icon->setScale(
-                0.75f
-            );
+            icon->setScale(0.65f);
 
             icon->setPosition({
-                panelX + 52.f,
-                panelY + panelH - 43.f
+                panelX + 42.f,
+                panelY + panelH - 37.f
             });
 
             this->addChild(
@@ -332,90 +284,84 @@ protected:
 
 
         // ====================================================
-        // TITULO
+        // TITLE
         // ====================================================
 
         makeLabel(
             "AI LEVEL GENERATOR",
             "bigFont.fnt",
-            0.58f,
+            0.52f,
             panelX + panelW / 2.f,
-            panelY + panelH - 36.f
+            panelY + panelH - 31.f
         );
 
 
         // ====================================================
-        // SUBTITULO
+        // SUBTITLE
         // ====================================================
 
         makeLabel(
             "CREA NIVELES CON INTELIGENCIA ARTIFICIAL",
             "goldFont.fnt",
-            0.27f,
+            0.24f,
             panelX + panelW / 2.f,
-            panelY + panelH - 65.f
+            panelY + panelH - 56.f
         );
 
 
         // ====================================================
-        // TARJETA DE INFORMACION
+        // INFORMATION CARD
         // ====================================================
 
         makeCard(
-            panelX + 25.f,
-            panelY + 92.f,
-            350.f,
-            165.f
+            panelX + 20.f,
+            panelY + 72.f,
+            305.f,
+            145.f
         );
 
 
         // ====================================================
-        // MUSICA
+        // MUSIC
         // ====================================================
 
         makeLabel(
             "MUSICA",
             "goldFont.fnt",
-            0.38f,
-            panelX + 85.f,
-            panelY + 225.f
+            0.34f,
+            panelX + 72.f,
+            panelY + 196.f
         );
-
 
         m_musicName =
             makeLabel(
                 "Ninguna seleccionada",
                 "chatFont.fnt",
-                0.34f,
-                panelX + 195.f,
-                panelY + 225.f
+                0.29f,
+                panelX + 175.f,
+                panelY + 196.f
             );
 
 
         // ====================================================
-        // LINEA
+        // LINE 1
         // ====================================================
 
         auto line1 =
             CCLayerColor::create(
-                ccc4(
-                    30,
-                    100,
-                    145,
-                    255
-                )
+                ccc4(30, 100, 145, 255)
             );
 
         if (line1) {
 
             line1->setContentSize({
-                315.f,
+                275.f,
                 2.f
             });
 
             line1->setPosition({
-                panelX + 42.f,
-                panelY + 195.f
+                panelX + 35.f,
+                panelY + 169.f
             });
 
             this->addChild(
@@ -426,52 +372,46 @@ protected:
 
 
         // ====================================================
-        // ANALISIS
+        // ANALYSIS
         // ====================================================
 
         makeLabel(
             "ANALISIS",
             "goldFont.fnt",
-            0.38f,
-            panelX + 90.f,
-            panelY + 165.f
+            0.34f,
+            panelX + 76.f,
+            panelY + 139.f
         );
-
 
         m_analysisStatus =
             makeLabel(
                 "Sin analisis",
                 "chatFont.fnt",
-                0.34f,
-                panelX + 195.f,
-                panelY + 165.f
+                0.29f,
+                panelX + 175.f,
+                panelY + 139.f
             );
 
 
         // ====================================================
-        // LINEA 2
+        // LINE 2
         // ====================================================
 
         auto line2 =
             CCLayerColor::create(
-                ccc4(
-                    30,
-                    100,
-                    145,
-                    255
-                )
+                ccc4(30, 100, 145, 255)
             );
 
         if (line2) {
 
             line2->setContentSize({
-                315.f,
+                275.f,
                 2.f
             });
 
             line2->setPosition({
-                panelX + 42.f,
-                panelY + 135.f
+                panelX + 35.f,
+                panelY + 113.f
             });
 
             this->addChild(
@@ -482,34 +422,32 @@ protected:
 
 
         // ====================================================
-        // GENERACION
+        // GENERATION
         // ====================================================
 
         makeLabel(
             "GENERACION",
             "goldFont.fnt",
-            0.38f,
-            panelX + 100.f,
-            panelY + 108.f
+            0.34f,
+            panelX + 82.f,
+            panelY + 84.f
         );
-
 
         m_generationStatus =
             makeLabel(
                 "Sin generar",
                 "chatFont.fnt",
-                0.34f,
-                panelX + 205.f,
-                panelY + 108.f
+                0.29f,
+                panelX + 180.f,
+                panelY + 84.f
             );
 
 
         // ====================================================
-        // MENU DE BOTONES
+        // BUTTON MENU
         // ====================================================
 
-        auto menu =
-            CCMenu::create();
+        auto menu = CCMenu::create();
 
         if (!menu)
             return false;
@@ -521,7 +459,7 @@ protected:
 
 
         // ====================================================
-        // AGREGAR
+        // ADD
         // ====================================================
 
         auto addButton =
@@ -530,14 +468,14 @@ protected:
                 menu_selector(
                     AIGeneratorPanel::onAddMusic
                 ),
-                panelX + 500.f,
-                panelY + 220.f,
-                105.f
+                panelX + 435.f,
+                panelY + 188.f,
+                100.f
             );
 
 
         // ====================================================
-        // ANALIZAR
+        // ANALYZE
         // ====================================================
 
         auto analyzeButton =
@@ -546,14 +484,14 @@ protected:
                 menu_selector(
                     AIGeneratorPanel::onAnalyze
                 ),
-                panelX + 495.f,
-                panelY + 160.f,
-                115.f
+                panelX + 435.f,
+                panelY + 130.f,
+                105.f
             );
 
 
         // ====================================================
-        // GENERAR
+        // GENERATE
         // ====================================================
 
         auto generateButton =
@@ -562,38 +500,47 @@ protected:
                 menu_selector(
                     AIGeneratorPanel::onGenerate
                 ),
-                panelX + 495.f,
-                panelY + 100.f,
-                115.f
+                panelX + 435.f,
+                panelY + 72.f,
+                105.f
             );
 
 
         if (addButton)
-            menu->addChild(
-                addButton
-            );
-
+            menu->addChild(addButton);
 
         if (analyzeButton)
-            menu->addChild(
-                analyzeButton
-            );
-
+            menu->addChild(analyzeButton);
 
         if (generateButton) {
 
-            generateButton->setEnabled(
-                false
-            );
+            generateButton->setEnabled(false);
 
-            generateButton->setOpacity(
-                120
-            );
+            generateButton->setOpacity(120);
 
             menu->addChild(
                 generateButton
             );
         }
+
+
+        // ====================================================
+        // CLOSE
+        // ====================================================
+
+        auto closeButton =
+            makeButton(
+                "X",
+                menu_selector(
+                    AIGeneratorPanel::onClose
+                ),
+                panelX + panelW - 22.f,
+                panelY + panelH - 18.f,
+                48.f
+            );
+
+        if (closeButton)
+            menu->addChild(closeButton);
 
 
         this->addChild(
@@ -603,37 +550,15 @@ protected:
 
 
         // ====================================================
-        // BOTON CERRAR
-        // ====================================================
-
-        auto closeButton =
-            makeButton(
-                "X",
-                menu_selector(
-                    AIGeneratorPanel::onClose
-                ),
-                panelX + panelW - 25.f,
-                panelY + panelH - 20.f,
-                55.f
-            );
-
-
-        if (closeButton)
-            menu->addChild(
-                closeButton
-            );
-
-
-        // ====================================================
         // FOOTER
         // ====================================================
 
         makeLabel(
             "AI ENGINE  •  EXPERIMENTAL",
             "chatFont.fnt",
-            0.26f,
+            0.22f,
             panelX + panelW / 2.f,
-            panelY + 25.f
+            panelY + 19.f
         );
 
 
@@ -642,13 +567,12 @@ protected:
 
 
     // ========================================================
-    // AGREGAR MUSICA
+    // ADD MUSIC
     // ========================================================
 
     void onAddMusic(CCObject*) {
 
         m_hasMusic = true;
-
 
         if (m_musicName) {
 
@@ -656,7 +580,6 @@ protected:
                 "Musica seleccionada"
             );
         }
-
 
         FLAlertLayer::create(
             "MUSICA",
@@ -669,7 +592,7 @@ protected:
 
 
     // ========================================================
-    // ANALIZAR
+    // ANALYZE
     // ========================================================
 
     void onAnalyze(CCObject*) {
@@ -685,9 +608,7 @@ protected:
             return;
         }
 
-
         m_hasAnalysis = true;
-
 
         if (m_analysisStatus) {
 
@@ -695,7 +616,6 @@ protected:
                 "BPM  BEATS  ENERGIA"
             );
         }
-
 
         if (m_generationStatus) {
 
@@ -707,7 +627,7 @@ protected:
 
 
     // ========================================================
-    // GENERAR
+    // GENERATE
     // ========================================================
 
     void onGenerate(CCObject*) {
@@ -723,7 +643,6 @@ protected:
             return;
         }
 
-
         if (!m_hasAnalysis) {
 
             FLAlertLayer::create(
@@ -735,14 +654,12 @@ protected:
             return;
         }
 
-
         if (m_generationStatus) {
 
             m_generationStatus->setString(
                 "Generando..."
             );
         }
-
 
         FLAlertLayer::create(
             "AI LEVEL GENERATOR",
@@ -754,7 +671,7 @@ protected:
 
 
     // ========================================================
-    // CERRAR
+    // CLOSE
     // ========================================================
 
     void onClose(CCObject*) {
@@ -782,14 +699,11 @@ public:
             return ret;
         }
 
-        CC_SAFE_DELETE(
-            ret
-        );
+        CC_SAFE_DELETE(ret);
 
         return nullptr;
     }
 };
-
 
 
 // ============================================================
@@ -800,8 +714,7 @@ class $modify(AILGEditorUI, EditorUI) {
 
     struct Fields {
 
-        CCMenuItemSpriteExtra* aiButton =
-            nullptr;
+        CCMenuItemSpriteExtra* aiButton = nullptr;
 
     };
 
@@ -810,15 +723,12 @@ class $modify(AILGEditorUI, EditorUI) {
         LevelEditorLayer* editorLayer
     ) {
 
-        if (!EditorUI::init(
-            editorLayer
-        )) {
+        if (!EditorUI::init(editorLayer))
             return false;
-        }
 
 
         // ====================================================
-        // BOTON AI
+        // AI BUTTON
         // ====================================================
 
         auto sprite =
@@ -831,7 +741,6 @@ class $modify(AILGEditorUI, EditorUI) {
                 28.f,
                 1.f
             );
-
 
         if (!sprite)
             return true;
@@ -846,22 +755,14 @@ class $modify(AILGEditorUI, EditorUI) {
                 )
             );
 
-
         if (!button)
             return true;
 
 
-        button->setScale(
-            0.75f
-        );
+        button->setScale(0.75f);
 
 
-        // ====================================================
-        // MENU DEL BOTON
-        // ====================================================
-
-        auto menu =
-            CCMenu::create();
+        auto menu = CCMenu::create();
 
         if (!menu)
             return true;
@@ -872,10 +773,7 @@ class $modify(AILGEditorUI, EditorUI) {
             75.f
         });
 
-
-        menu->addChild(
-            button
-        );
+        menu->addChild(button);
 
 
         this->addChild(
@@ -893,7 +791,7 @@ class $modify(AILGEditorUI, EditorUI) {
 
 
     // ========================================================
-    // ABRIR AI
+    // OPEN AI
     // ========================================================
 
     void openAI(CCObject*) {
