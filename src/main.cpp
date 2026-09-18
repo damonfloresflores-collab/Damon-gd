@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <cstdint>
+#include <cstdio>
 
 using namespace geode::prelude;
 
@@ -997,9 +999,7 @@ protected:
                     extension.end(),
                     extension.begin(),
 
-                    [](
-                        unsigned char c
-                    ) {
+                    [](unsigned char c) {
 
                         return static_cast<char>(
                             std::tolower(c)
@@ -1122,24 +1122,48 @@ protected:
             m_musicPath;
 
 
+        // ====================================================
+        // MPG123 SE EJECUTA EN UN HILO DE BLOQUEO
+        // ====================================================
+
         geode::async::spawn(
-            geode::async::background(
-                [musicPath]() {
 
-                    AudioInfo info;
+            [](
+                std::filesystem::path path
+            ) -> arc::Future<
+                std::pair<bool, AudioInfo>
+            > {
 
-                    bool success =
-                        decodeMP3(
-                            musicPath,
-                            info
-                        );
+                auto handle =
+                    geode::async::runtime().spawnBlocking(
 
-                    return std::make_pair(
-                        success,
-                        info
+                        [path]() -> std::pair<
+                            bool,
+                            AudioInfo
+                        > {
+
+                            AudioInfo info;
+
+                            bool success =
+                                decodeMP3(
+                                    path,
+                                    info
+                                );
+
+                            return std::make_pair(
+                                success,
+                                info
+                            );
+                        }
                     );
-                }
-            ),
+
+                co_return co_await handle;
+            }(musicPath),
+
+
+            // =================================================
+            // CALLBACK EN EL HILO PRINCIPAL
+            // =================================================
 
             [this](
                 std::pair<bool, AudioInfo> result
