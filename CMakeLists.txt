@@ -37,7 +37,22 @@ if (NOT mpg123_POPULATED)
     FetchContent_Populate(mpg123)
 endif()
 
-# Compilar MPG123
+message(STATUS "MPG123 SOURCE DIR: ${mpg123_SOURCE_DIR}")
+message(STATUS "MPG123 BINARY DIR: ${mpg123_BINARY_DIR}")
+
+# Comprobar que mpg123.h realmente existe
+if (NOT EXISTS "${mpg123_SOURCE_DIR}/src/include/mpg123.h")
+    message(FATAL_ERROR
+        "ERROR: No se encontro mpg123.h en ${mpg123_SOURCE_DIR}/src/include"
+    )
+endif()
+
+message(STATUS "MPG123 HEADER ENCONTRADO: ${mpg123_SOURCE_DIR}/src/include/mpg123.h")
+
+# =========================================================
+# COMPILAR MPG123
+# =========================================================
+
 add_subdirectory(
     ${mpg123_SOURCE_DIR}/ports/cmake
     ${CMAKE_CURRENT_BINARY_DIR}/mpg123-build
@@ -62,20 +77,22 @@ add_library(
 # INCLUDES
 # =========================================================
 
+# Se agrega de forma GLOBAL al directorio de compilacion
+# para garantizar que main.cpp encuentre mpg123.h.
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${mpg123_SOURCE_DIR}/src/include
+    ${mpg123_SOURCE_DIR}/src/libmpg123
+    ${CMAKE_CURRENT_BINARY_DIR}/mpg123-build/src/libmpg123
+)
+
+# Tambien se agrega especificamente al target
 target_include_directories(
     ${PROJECT_NAME}
     PRIVATE
-
-    # Headers del mod
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-
-    # Header público de MPG123
     ${mpg123_SOURCE_DIR}/src/include
-
-    # Headers internos generados/compilados de MPG123
     ${mpg123_SOURCE_DIR}/src/libmpg123
-
-    # Headers del build de MPG123
     ${CMAKE_CURRENT_BINARY_DIR}/mpg123-build/src/libmpg123
 )
 
