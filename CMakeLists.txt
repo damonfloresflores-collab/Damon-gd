@@ -37,6 +37,7 @@ if (NOT mpg123_POPULATED)
     FetchContent_Populate(mpg123)
 endif()
 
+# Compilar MPG123
 add_subdirectory(
     ${mpg123_SOURCE_DIR}/ports/cmake
     ${CMAKE_CURRENT_BINARY_DIR}/mpg123-build
@@ -57,23 +58,31 @@ add_library(
     ${SOURCES}
 )
 
-# Includes del mod + MPG123
+# =========================================================
+# INCLUDES
+# =========================================================
+
 target_include_directories(
     ${PROJECT_NAME}
     PRIVATE
+
+    # Headers del mod
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 
-    # MPG123 -> aquí está mpg123.h
+    # Header público de MPG123
     ${mpg123_SOURCE_DIR}/src/include
+
+    # Headers internos generados/compilados de MPG123
+    ${mpg123_SOURCE_DIR}/src/libmpg123
+
+    # Headers del build de MPG123
+    ${CMAKE_CURRENT_BINARY_DIR}/mpg123-build/src/libmpg123
 )
 
 # =========================================================
 # LINK MPG123
 # =========================================================
 
-# IMPORTANTE:
-# NO usar PRIVATE/PUBLIC aquí.
-# setup_geode_mod() utiliza la firma plain de CMake.
 target_link_libraries(
     ${PROJECT_NAME}
     libmpg123
