@@ -11,8 +11,6 @@
 #include <string>
 #include <vector>
 #include <cmath>
-#include <cstdint>
-#include <cstdio>
 
 using namespace geode::prelude;
 
@@ -914,7 +912,7 @@ protected:
 
         auto footer =
             CCLabelBMFont::create(
-                "MP3  •  ANALISIS MUSICAL  •  GENERACION PROCEDURAL",
+                "MP3  â€¢  ANALISIS MUSICAL  â€¢  GENERACION PROCEDURAL",
                 "chatFont.fnt"
             );
 
@@ -999,7 +997,9 @@ protected:
                     extension.end(),
                     extension.begin(),
 
-                    [](unsigned char c) {
+                    [](
+                        unsigned char c
+                    ) {
 
                         return static_cast<char>(
                             std::tolower(c)
@@ -1122,31 +1122,20 @@ protected:
             m_musicPath;
 
 
-        // ====================================================
-        // MPG123 SE EJECUTA EN UN HILO DE BLOQUEO
-        // ====================================================
-
         geode::async::spawn(
-
-            [](
-                std::filesystem::path path
-            ) -> arc::Future<
-                std::pair<bool, AudioInfo>
-            > {
+            [musicPath]() -> arc::Future<std::pair<bool, AudioInfo>> {
 
                 auto handle =
-                    geode::async::runtime().spawnBlocking(
-
-                        [path]() -> std::pair<
-                            bool,
-                            AudioInfo
-                        > {
+                    geode::async::runtime().spawnBlocking<
+                        std::pair<bool, AudioInfo>
+                    >(
+                        [musicPath]() {
 
                             AudioInfo info;
 
                             bool success =
                                 decodeMP3(
-                                    path,
+                                    musicPath,
                                     info
                                 );
 
@@ -1158,12 +1147,7 @@ protected:
                     );
 
                 co_return co_await handle;
-            }(musicPath),
-
-
-            // =================================================
-            // CALLBACK EN EL HILO PRINCIPAL
-            // =================================================
+            },
 
             [this](
                 std::pair<bool, AudioInfo> result
@@ -1200,7 +1184,7 @@ protected:
                 std::snprintf(
                     status,
                     sizeof(status),
-                    "%.0f Hz  •  %.1fs",
+                    "%.0f Hz  â€¢  %.1fs",
                     static_cast<double>(
                         info.sampleRate
                     ),
