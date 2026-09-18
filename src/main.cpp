@@ -912,7 +912,7 @@ protected:
 
         auto footer =
             CCLabelBMFont::create(
-                "MP3  â€¢  ANALISIS MUSICAL  â€¢  GENERACION PROCEDURAL",
+                "MP3  •  ANALISIS MUSICAL  •  GENERACION PROCEDURAL",
                 "chatFont.fnt"
             );
 
@@ -1184,7 +1184,7 @@ protected:
                 std::snprintf(
                     status,
                     sizeof(status),
-                    "%.0f Hz  â€¢  %.1fs",
+                    "%.0f Hz  •  %.1fs",
                     static_cast<double>(
                         info.sampleRate
                     ),
